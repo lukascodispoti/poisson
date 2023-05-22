@@ -1,0 +1,7 @@
+*.h5
+obj/
+bin/
+.clang-format
+.vscode/
+.cache
+compile_commands.json
