@@ -16,21 +16,16 @@
 #include <mpi.h>
 
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <vector>
 
-// Number of grid points
 const int M = 1024;
-
-// Grid spacing
-const double h = 2 * M_PI / M;
-
-// Tolerance
-const double tol = 1e-5;
-
-// Maximum number of iterations
+const float h = 2 * M_PI / M;
+const float tol = 1e-5;
 const int max_iter = 10000;
 
-size_t glob_idx(size_t i, size_t j, size_t k, size_t offset);
 size_t loc_idx(hssize_t i, hssize_t j, hssize_t k);
 /**
  * @brief Read the right hand side of the poisson equation from a hdf5 file.
@@ -41,9 +36,10 @@ size_t loc_idx(hssize_t i, hssize_t j, hssize_t k);
  * @param offset
  */
 void read_rhs(std::vector<float> &f, char *fname, hsize_t Nloc, hsize_t offset);
+
 float residual(std::vector<float> &f, std::vector<float> &phi,
                std::vector<float> &left, std::vector<float> &right,
-               hsize_t Nloc, hsize_t offset);
+               hsize_t Nloc);
 /**
  * @brief We solve the poisson equation of the form:
  *
@@ -59,11 +55,11 @@ float residual(std::vector<float> &f, std::vector<float> &phi,
  * @param left
  * @param right
  * @param Nloc
- * @param offset
  */
 void update(std::vector<float> &f, std::vector<float> &phi,
             std::vector<float> &phinew, std::vector<float> &left,
-            std::vector<float> &right, hsize_t Nloc, hsize_t offset);
+            std::vector<float> &right, hsize_t Nloc);
+
 /**
  * @brief Exchange the boundaries between the mpi ranks.
  *
@@ -110,8 +106,8 @@ int main(int argc, char **argv) {
     int iter = 0;
     float res = 1e10;
     while (res > tol && iter < max_iter) {
-        update(f, phi, phinew, left, right, Nloc, offset);
-        res = residual(f, phi, left, right, Nloc, offset);
+        update(f, phi, phinew, left, right, Nloc);
+        res = residual(f, phi, left, right, Nloc);
         exchange(phi, left, right, Nloc);
         iter++;
         if (!rank) printf("iter: %d, residual: %f\n", iter, res);
@@ -125,16 +121,6 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-size_t glob_idx(size_t i, size_t j, size_t k, size_t offset) {
-    i += offset;
-    i >= M ? i -= M : i;
-    j >= M ? j -= M : j;
-    k >= M ? k -= M : k;
-    i < 0 ? i += M : i;
-    j < 0 ? j += M : j;
-    k < 0 ? k += M : k;
-    return i * M * M + j * M + k;
-}
 size_t loc_idx(hssize_t i, hssize_t j, hssize_t k) {
     i >= M ? i -= M : i;
     j >= M ? j -= M : j;
@@ -183,16 +169,14 @@ void read_rhs(std::vector<float> &f, char *fname, hsize_t Nloc,
 
 float residual(std::vector<float> &f, std::vector<float> &phi,
                std::vector<float> &left, std::vector<float> &right,
-               hsize_t Nloc, hsize_t offset) {
-    double t = MPI_Wtime();
+               hsize_t Nloc) {
     /* Calculate the residual: res = \nabla^2 phi - f */
     float res = 0.f;
-    float nabla2f;
-    size_t i, j, k;
-    for (i = offset + 1; i < Nloc - 1; i++)
+    float nabla2f = 0.f;
+    ssize_t i, j, k;
+    for (i = 1; i < (long long)Nloc - 1; i++)
         for (j = 0; j < M; j++)
             for (k = 0; k < M; k++) {
-                nabla2f = 0.f;
                 nabla2f =
                     phi[loc_idx(i + 1, j, k)] + phi[loc_idx(i - 1, j, k)] +
                     phi[loc_idx(i, j + 1, k)] + phi[loc_idx(i, j - 1, k)] +
@@ -218,7 +202,7 @@ float residual(std::vector<float> &f, std::vector<float> &phi,
     i = Nloc - 1;
     for (j = 0; j < M; j++)
         for (k = 0; k < M; k++) {
-            nabla2f = right[loc_idx(0, j, k)] + phi[loc_idx(i - 1, j, k)] +
+            nabla2f = right[loc_idx(0, j, k)]   + phi[loc_idx(i - 1, j, k)] +
                       phi[loc_idx(i, j + 1, k)] + phi[loc_idx(i, j - 1, k)] +
                       phi[loc_idx(i, j, k + 1)] + phi[loc_idx(i, j, k - 1)] -
                       6 * phi[loc_idx(i, j, k)];
@@ -228,18 +212,12 @@ float residual(std::vector<float> &f, std::vector<float> &phi,
         }
 
     MPI_Allreduce(MPI_IN_PLACE, &res, 1, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
-    t = MPI_Wtime() - t;
-    // if (offset == 0) {
-        // printf("  residual time: %f s\n", t);
-    // }
-    return res;
+    return sqrt(res / M / M / M);
 }
 
 void update(std::vector<float> &f, std::vector<float> &phi,
             std::vector<float> &phinew, std::vector<float> &left,
-            std::vector<float> &right, hsize_t Nloc, hsize_t offset) {
-
-    double t = MPI_Wtime();
+            std::vector<float> &right, hsize_t Nloc) {
     ssize_t i, j, k;
     for (i = 1; i < (long long)Nloc - 1; i++)
         for (j = 0; j < M; j++)
@@ -275,16 +253,10 @@ void update(std::vector<float> &f, std::vector<float> &phi,
         }
 
     std::swap(phi, phinew);
-    t = MPI_Wtime() - t;
-    // if (offset == 0) {
-        // printf("  update time: %f s\n", t);
-    // }
 }
 
 void exchange(std::vector<float> &phi, std::vector<float> &left,
               std::vector<float> &right, hsize_t Nloc) {
-    double t = MPI_Wtime();
-    /* exchange boundaries with next and previous mpi ranks*/
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -302,11 +274,6 @@ void exchange(std::vector<float> &phi, std::vector<float> &left,
     MPI_Irecv(right.data(), M * M, MPI_FLOAT, next, tag, MPI_COMM_WORLD,
               &req[3]);
     MPI_Waitall(4, req, stat);
-
-    t = MPI_Wtime() - t;
-    // if (rank == 0) {
-        // printf("  exchange time: %f s\n", t);
-    // }
 }
 void write_phi(std::vector<float> &phi, char *fname, hsize_t Nloc,
                hsize_t offset) {
