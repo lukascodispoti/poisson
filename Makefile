@@ -7,7 +7,7 @@ RM     = rm -rf
 
 
 CC      = mpic++
-CFLAGS  = -Wall -Wextra -I. -march=native
+CFLAGS  = -Wall -Wextra -I. -mtune=generic -march=native
 LDLIBS  = -lhdf5 -lm -lstdc++
 
 ifeq ($(DEBUG), 1)

@@ -75,9 +75,11 @@ void write_phi(std::vector<float> &phi, char *fname, hsize_t Nloc,
                hsize_t offset);
 
 int main(int argc, char **argv) {
-    MPI_Init(&argc, &argv);
+    /* set non-buffered stdout */
+    setbuf(stdout, NULL);
 
     int rank, size;
+    MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
