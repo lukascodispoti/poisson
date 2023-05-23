@@ -1,12 +1,12 @@
 DEBUG = 0
 
+SRCDIR = .
 BINDIR = bin
 OBJDIR = obj
 MKDIR  = mkdir -p
 RM     = rm -rf
 
-
-CC      = mpic++
+CXX      = mpic++
 CFLAGS  = -Wall -Wextra -I. -mtune=generic -march=native
 LDLIBS  = -lhdf5 -lm -lstdc++
 
@@ -16,24 +16,30 @@ else
 	CFLAGS += -O3
 endif
 
-TARGET = poisson
+TARGET = main
 TGT = $(BINDIR)/$(TARGET)
 
 $(OBJDIR):
-	$(MKDIR) -p $(OBJDIR)
+	$(MKDIR) $(OBJDIR)
 
 $(BINDIR):
-	$(MKDIR) -p $(BINDIR)
+	$(MKDIR) $(BINDIR)
 
-$(OBJDIR)/%.o: $(TARGET).cc
-	$(CC) $(CFLAGS) -c $< -o $@
+$(OBJDIR)/poisson.o: $(SRCDIR)/poisson.cc $(SRCDIR)/poisson.h
+	$(CXX) $(CFLAGS) -c $< -o $@
 
-$(TGT): $(OBJDIR)/$(TARGET).o
-	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
+$(OBJDIR)/main.o: $(SRCDIR)/main.cc $(SRCDIR)/poisson.h
+	$(CXX) $(CFLAGS) -c $< -o $@
+
+OBJ = $(OBJDIR)/poisson.o $(OBJDIR)/main.o
+
+$(TGT): $(OBJ)
+	$(CXX) $(CFLAGS) $^ -o $@ $(LDLIBS) 
 
 .DEFAULT_GOAL := all
-.PHONY: all
-all: $(OBJDIR) $(BINDIR) $(TGT)
+.PHONY: all clean
+
+all: $(OBJDIR) $(BINDIR) $(TGT) 
 
 clean:
 	$(RM) $(OBJDIR) $(BINDIR)
