@@ -5,3 +5,6 @@ bin/
 .vscode/
 .cache
 compile_commands.json
+*.png
+*.csv
+*.pdf
