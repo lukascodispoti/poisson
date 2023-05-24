@@ -3,6 +3,7 @@
 
 #include <hdf5.h>
 
+#include <cmath>
 #include <vector>
 
 size_t loc_idx(hssize_t, hssize_t, hssize_t, const hssize_t);
@@ -22,7 +23,7 @@ void read1D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
 
 void read3D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
             hsize_t offset, const hsize_t M);
-            
+
 /**
  * @brief Write a single component of a M * M * M field to a hdf5 file.
  *
@@ -35,11 +36,8 @@ void read3D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
 void write1D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
              hsize_t offset, const hsize_t M);
 
-
 void write3D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
              hsize_t offset, const hsize_t M);
-
-            
 
 /**
  * @brief Compute the residual, the norm of the difference between the left and

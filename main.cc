@@ -42,17 +42,30 @@ int main(int argc, char **argv) {
 
     /* get input filename and datatset to read from the command line */
     char inputfile[100], inputdset[100];
-    if (argc != 3) {
-        printf("Usage: %s <inputfile> <dataset>\n", argv[0]);
+    bool restart = false;
+    char restartfile[100], restartdset[100] = "phi";
+    if (argc != 3 && argc != 4 && argc != 5) {
+        printf("Usage: %s <inputfile> <dataset> [<restartfile> <restartdset>]\n", argv[0]);
         exit(1);
     }
     strcpy(inputfile, argv[1]);
     strcpy(inputdset, argv[2]);
+    if (argc > 3) {
+        restart = true;
+        strcpy(restartfile, argv[3]);
+    }
+    if (argc > 4) {
+        strcpy(restartdset, argv[4]);
+    }
 
     std::vector<float> f(Nloc * M * M);
     read1D(f, inputfile, inputdset, Nloc, offset, M);
 
     std::vector<float> phi(Nloc * M * M, 0);
+    if (restart) {
+        char dset[] = "phi";
+        read1D(phi, restartfile, dset, Nloc, offset, M);
+    }
     std::vector<float> phinew(Nloc * M * M, 0);
     std::vector<float> left(M * M);
     std::vector<float> right(M * M);
