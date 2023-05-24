@@ -9,4 +9,3 @@ periodic boundary conditions using a central difference scheme.
 
 - `mpi`
 - `hdf5-mpi`
-

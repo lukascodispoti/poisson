@@ -23,7 +23,6 @@ void read1D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
 
 void read3D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
             hsize_t offset, const hsize_t M);
-
 /**
  * @brief Write a single component of a M * M * M field to a hdf5 file.
  *
