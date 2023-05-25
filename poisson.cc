@@ -182,7 +182,7 @@ float residual(std::vector<float> &f, std::vector<float> &phi,
                std::vector<float> &left, std::vector<float> &right,
                hsize_t Nloc, const hssize_t M) {
     /* Calculate the residual: res = norm(\nabla^2 phi - f) */
-    float h = 1.f / (M - 1);
+    float h = 2 * M_PI / M;
     float res = 0.f;
     float nabla2f = 0.f;
     ssize_t i, j, k;
@@ -231,10 +231,11 @@ float residual(std::vector<float> &f, std::vector<float> &phi,
     return sqrt(res / M / M / M);
 }
 
-void update(std::vector<float> &f, std::vector<float> &phi,
-            std::vector<float> &phinew, std::vector<float> &left,
-            std::vector<float> &right, hsize_t Nloc, const hssize_t M) {
-    float h = 1.f / (M - 1);
+void Jacobi(std::vector<float> &f, std::vector<float> &phi,
+            std::vector<float> &left, std::vector<float> &right, hsize_t Nloc,
+            const hssize_t M) {
+    std::vector<float> phinew(Nloc * M * M, 0);
+    float h = 2 * M_PI / M;
     ssize_t i, j, k;
     for (i = 1; i < (long long)Nloc - 1; i++)
         for (j = 0; j < M; j++)
@@ -274,6 +275,101 @@ void update(std::vector<float> &f, std::vector<float> &phi,
     std::swap(phi, phinew);
 }
 
+void GaussSeidel(std::vector<float> &f, std::vector<float> &phi,
+                 std::vector<float> &left, std::vector<float> &right,
+                 hsize_t Nloc, const hssize_t M) {
+    /* use Gauss-Seidel to update the solution*/
+    float h = 2 * M_PI / M;
+    ssize_t i, j, k;
+    for (i = 1; i < (long long)Nloc - 1; i++)
+        for (j = 0; j < M; j++)
+            for (k = 0; k < M; k++) {
+                phi[loc_idx(i, j, k, M)] = (phi[loc_idx(i + 1, j, k, M)] +
+                                            phi[loc_idx(i - 1, j, k, M)] +
+                                            phi[loc_idx(i, j + 1, k, M)] +
+                                            phi[loc_idx(i, j - 1, k, M)] +
+                                            phi[loc_idx(i, j, k + 1, M)] +
+                                            phi[loc_idx(i, j, k - 1, M)] -
+                                            h * h * f[loc_idx(i, j, k, M)]) /
+                                           6.f;
+            }
+    /* left boundary */
+    i = 0;
+    for (j = 0; j < M; j++)
+        for (k = 0; k < M; k++) {
+            phi[loc_idx(i, j, k, M)] =
+                (phi[loc_idx(i + 1, j, k, M)] + left[loc_idx(0, j, k, M)] +
+                 phi[loc_idx(i, j + 1, k, M)] + phi[loc_idx(i, j - 1, k, M)] +
+                 phi[loc_idx(i, j, k + 1, M)] + phi[loc_idx(i, j, k - 1, M)] -
+                 h * h * f[loc_idx(i, j, k, M)]) /
+                6.f;
+        }
+    /* right boundary */
+    i = Nloc - 1;
+    for (j = 0; j < M; j++)
+        for (k = 0; k < M; k++) {
+            phi[loc_idx(i, j, k, M)] =
+                (right[loc_idx(0, j, k, M)] + phi[loc_idx(i - 1, j, k, M)] +
+                 phi[loc_idx(i, j + 1, k, M)] + phi[loc_idx(i, j - 1, k, M)] +
+                 phi[loc_idx(i, j, k + 1, M)] + phi[loc_idx(i, j, k - 1, M)] -
+                 h * h * f[loc_idx(i, j, k, M)]) /
+                6.f;
+        }
+}
+
+void SOR(std::vector<float> &f, std::vector<float> &phi,
+         std::vector<float> &left, std::vector<float> &right, hsize_t Nloc,
+         const hssize_t M) {
+    /* use successive overrelaxation to update phi */
+    float h = 2 * M_PI / M;
+    ssize_t i, j, k;
+    float omega = 1.8;
+    for (i = 1; i < (long long)Nloc - 1; i++)
+        for (j = 0; j < M; j++)
+            for (k = 0; k < M; k++) {
+                phi[loc_idx(i, j, k, M)] =
+                    (1 - omega) * phi[loc_idx(i, j, k, M)] +
+                    omega *
+                        (phi[loc_idx(i + 1, j, k, M)] +
+                         phi[loc_idx(i - 1, j, k, M)] +
+                         phi[loc_idx(i, j + 1, k, M)] +
+                         phi[loc_idx(i, j - 1, k, M)] +
+                         phi[loc_idx(i, j, k + 1, M)] +
+                         phi[loc_idx(i, j, k - 1, M)] -
+                         h * h * f[loc_idx(i, j, k, M)]) /
+                        6.f;
+            }
+    /* left boundary */
+    i = 0;
+    for (j = 0; j < M; j++)
+        for (k = 0; k < M; k++) {
+            phi[loc_idx(i, j, k, M)] =
+                (1 - omega) * phi[loc_idx(i, j, k, M)] +
+                omega *
+                    (phi[loc_idx(i + 1, j, k, M)] + left[loc_idx(0, j, k, M)] +
+                     phi[loc_idx(i, j + 1, k, M)] +
+                     phi[loc_idx(i, j - 1, k, M)] +
+                     phi[loc_idx(i, j, k + 1, M)] +
+                     phi[loc_idx(i, j, k - 1, M)] -
+                     h * h * f[loc_idx(i, j, k, M)]) /
+                    6.f;
+        }
+    /* right boundary */
+    i = Nloc - 1;
+    for (j = 0; j < M; j++)
+        for (k = 0; k < M; k++) {
+            phi[loc_idx(i, j, k, M)] =
+                (1 - omega) * phi[loc_idx(i, j, k, M)] +
+                omega *
+                    (right[loc_idx(0, j, k, M)] + phi[loc_idx(i - 1, j, k, M)] +
+                     phi[loc_idx(i, j + 1, k, M)] +
+                     phi[loc_idx(i, j - 1, k, M)] +
+                     phi[loc_idx(i, j, k + 1, M)] +
+                     phi[loc_idx(i, j, k - 1, M)] -
+                     h * h * f[loc_idx(i, j, k, M)]) /
+                    6.f;
+        }
+}
 void exchange(std::vector<float> &phi, std::vector<float> &left,
               std::vector<float> &right, hsize_t Nloc, const int M) {
     int rank, size;

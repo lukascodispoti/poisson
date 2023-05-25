@@ -8,3 +8,8 @@ compile_commands.json
 *.png
 *.csv
 *.pdf
+.DS_Store
+
+html/
+latex/
+config

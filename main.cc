@@ -44,18 +44,38 @@ int main(int argc, char **argv) {
     char inputfile[100], inputdset[100];
     bool restart = false;
     char restartfile[100], restartdset[100] = "phi";
-    if (argc != 3 && argc != 4 && argc != 5) {
-        printf("Usage: %s <inputfile> <dataset> [<restartfile> <restartdset>]\n", argv[0]);
+    int method = 2;
+    if (argc != 3 && argc != 4 && argc != 5 && argc != 6) {
+        printf(
+            "Usage: %s <inputfile> <dataset> [<method: 0 jacobi, 1 "
+            "gauss-seidel, 2 sor> <restartfile> <restartdset>]\n",
+            argv[0]);
         exit(1);
     }
     strcpy(inputfile, argv[1]);
     strcpy(inputdset, argv[2]);
-    if (argc > 3) {
-        restart = true;
-        strcpy(restartfile, argv[3]);
-    }
+    if (argc > 3) method = atoi(argv[3]);
     if (argc > 4) {
-        strcpy(restartdset, argv[4]);
+        restart = true;
+        strcpy(restartfile, argv[4]);
+    }
+    if (argc > 5) strcpy(restartdset, argv[5]);
+
+    void (*update)(std::vector<float> &, std::vector<float> &,
+                   std::vector<float> &, std::vector<float> &, hsize_t,
+                   const hssize_t);
+    if (method == 0) {
+        update = &Jacobi;
+        if (!rank) printf("Jacobi method\n");
+    } else if (method == 1) {
+        update = &GaussSeidel;
+        if (!rank) printf("Gauss-Seidel method\n");
+    } else if (method == 2) {
+        update = &SOR;
+        if (!rank) printf("SOR method\n");
+    } else {
+        printf("Invalid method\n");
+        exit(1);
     }
 
     std::vector<float> f(Nloc * M * M);
@@ -66,7 +86,6 @@ int main(int argc, char **argv) {
         char dset[] = "phi";
         read1D(phi, restartfile, dset, Nloc, offset, M);
     }
-    std::vector<float> phinew(Nloc * M * M, 0);
     std::vector<float> left(M * M);
     std::vector<float> right(M * M);
 
@@ -75,8 +94,16 @@ int main(int argc, char **argv) {
     const int dump_interval = 100;
     int iter = 0;
     float res = 1e10;
+
+    /* create the residual file */
+    FILE *fp;
+    char fname[100] = "residual.csv";
+    fp = fopen(fname, "w");
+    fprintf(fp, "iter,residual\n");
+    fclose(fp);
+
     while (res > tol && iter < max_iter) {
-        update(f, phi, phinew, left, right, Nloc, M);
+        update(f, phi, left, right, Nloc, M);
         res = residual(f, phi, left, right, Nloc, M);
         exchange(phi, left, right, Nloc, M);
         iter++;
@@ -85,6 +112,11 @@ int main(int argc, char **argv) {
             char fname[100] = "phi.h5";
             char dset[100] = "phi";
             write1D(phi, fname, dset, Nloc, offset, M);
+        }
+        if (!rank) {
+            fp = fopen(fname, "a");
+            fprintf(fp, "%d,%f\n", iter, res);
+            fclose(fp);
         }
     }
 
