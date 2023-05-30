@@ -136,7 +136,9 @@ void write3D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
 
     hid_t cparms;
     cparms = H5Pcreate(H5P_DATASET_CREATE);
-    cparms = H5P_DEFAULT;
+    const hsize_t chunksize = 32;
+    const hsize_t chunk[4] = {chunksize, chunksize, chunksize, 3};
+    H5Pset_chunk(cparms, 4, chunk);
     hid_t xp = H5Pcreate(H5P_DATASET_XFER);
     H5Pset_dxpl_mpio(xp, H5FD_MPIO_INDEPENDENT);
 
@@ -370,6 +372,117 @@ void SOR(std::vector<float> &f, std::vector<float> &phi,
                     6.f;
         }
 }
+
+// void Laplacian(std::vector<float> &phi, std::vector<float> &left,
+//                std::vector<float> &right, hsize_t Nloc, const hssize_t M,
+//                std::vector<float> &Ap) {
+//     /* compute laplacian */
+//     float h = 2 * M_PI / M;
+//     ssize_t i, j, k;
+//     for (i = 1; i < (long long)Nloc - 1; i++)
+//         for (j = 0; j < M; j++)
+//             for (k = 0; k < M; k++) {
+//                 Ap[loc_idx(i, j, k, M)] = (phi[loc_idx(i + 1, j, k, M)] +
+//                                            phi[loc_idx(i - 1, j, k, M)] +
+//                                            phi[loc_idx(i, j + 1, k, M)] +
+//                                            phi[loc_idx(i, j - 1, k, M)] +
+//                                            phi[loc_idx(i, j, k + 1, M)] +
+//                                            phi[loc_idx(i, j, k - 1, M)] -
+//                                            6 * phi[loc_idx(i, j, k, M)]) /
+//                                           (h * h);
+//             }
+// }
+
+// /**
+//  * @brief Conjugate gradient method to update phi
+//  *
+//  * @param phi
+//  * @param left
+//  * @param right
+//  * @param Nloc
+//  * @param M
+//  */
+// float ConjugateGradient(std::vector<float> &f, std::vector<float> &phi,
+//                         std::vector<float> &left, std::vector<float> &right,
+//                         hsize_t Nloc, const hssize_t M) {
+//     /* update phi using the conjugate gradient method */
+//     float h = 2 * M_PI / M;
+//     ssize_t i, j, k;
+//     std::vector<float> r(M * M * Nloc, 0);
+//     std::vector<float> p(M * M * Nloc, 0);
+//     std::vector<float> Ap(M * M * Nloc, 0);
+//     std::vector<float> tmp(M * M * Nloc, 0);
+//     float alpha, beta, rnorm, rnorm0;
+//     /* initialize r and p */
+//     for (i = 0; i < (long long)Nloc; i++)
+//         for (j = 0; j < M; j++)
+//             for (k = 0; k < M; k++) {
+//                 r[loc_idx(i, j, k, M)] =
+//                     f[loc_idx(i, j, k, M)] -
+//                     (phi[loc_idx(i + 1, j, k, M)] + left[loc_idx(0, j, k, M)] +
+//                      phi[loc_idx(i - 1, j, k, M)] +
+//                      phi[loc_idx(i, j + 1, k, M)] +
+//                      phi[loc_idx(i, j - 1, k, M)] +
+//                      phi[loc_idx(i, j, k + 1, M)] +
+//                      phi[loc_idx(i, j, k - 1, M)] -
+//                      h * h * phi[loc_idx(i, j, k, M)]) /
+//                         6.f;
+//                 p[loc_idx(i, j, k, M)] = r[loc_idx(i, j, k, M)];
+//             }
+//     /* compute rnorm */
+//     rnorm = 0;
+//     for (i = 0; i < (long long)Nloc; i++)
+//         for (j = 0; j < M; j++)
+//             for (k = 0; k < M; k++)
+//                 rnorm += r[loc_idx(i, j, k, M)] * r[loc_idx(i, j, k, M)];
+//     MPI_Allreduce(MPI_IN_PLACE, &rnorm, 1, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+//     rnorm0 = rnorm;
+//     /* compute Ap */
+//     Laplacian(phi, left, right, Nloc, M, Ap);
+//     /* compute alpha */
+//     alpha = 0;
+//     for (i = 0; i < (long long)Nloc; i++)
+//         for (j = 0; j < M; j++)
+//             for (k = 0; k < M; k++)
+//                 alpha += p[loc_idx(i, j, k, M)] * Ap[loc_idx(i, j, k, M)];
+//     MPI_Allreduce(MPI_IN_PLACE, &alpha, 1, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+//     alpha = rnorm / alpha;
+//     /* update phi */
+//     for (i = 0; i < (long long)Nloc; i++)
+//         for (j = 0; j < M; j++)
+//             for (k = 0; k < M; k++)
+//                 phi[loc_idx(i, j, k, M)] += alpha * p[loc_idx(i, j, k, M)];
+//     /* update r */
+//     for (i = 0; i < (long long)Nloc; i++)
+//         for (j = 0; j < M; j++)
+//             for (k = 0; k < M; k++)
+//                 r[loc_idx(i, j, k, M)] -= alpha * Ap[loc_idx(i, j, k, M)];
+//     /* compute beta */
+//     beta = 0;
+//     for (i = 0; i < (long long)Nloc; i++)
+//         for (j = 0; j < M; j++)
+//             for (k = 0; k < M; k++)
+//                 beta += r[loc_idx(i, j, k, M)] * r[loc_idx(i, j, k, M)];
+//     MPI_Allreduce(MPI_IN_PLACE, &beta, 1, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+//     beta /= rnorm;
+//     /* update p */
+//     for (i = 0; i < (long long)Nloc; i++)
+//         for (j = 0; j < M; j++)
+//             for (k = 0; k < M; k++)
+//                 p[loc_idx(i, j, k, M)] =
+//                     r[loc_idx(i, j, k, M)] + beta * p[loc_idx(i, j, k, M)];
+//     /* compute rnorm */
+//     rnorm = 0;
+//     for (i = 0; i < (long long)Nloc; i++)
+//         for (j = 0; j < M; j++)
+//             for (k = 0; k < M; k++)
+//                 rnorm += r[loc_idx(i, j, k, M)] * r[loc_idx(i, j, k, M)];
+//     MPI_Allreduce(MPI_IN_PLACE, &rnorm, 1, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+//     rnorm = sqrt(rnorm / rnorm0);
+//     if (rank == 0) printf("rnorm = %e\n", rnorm);
+//     return rnorm;
+// }
+
 void exchange(std::vector<float> &phi, std::vector<float> &left,
               std::vector<float> &right, hsize_t Nloc, const int M) {
     int rank, size;
