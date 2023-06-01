@@ -25,10 +25,6 @@ void read1D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
     dataset = H5Dopen2(file, dsetname, H5P_DEFAULT);
     dataspace = H5Dget_space(dataset);
 
-    /* overall dimension of the dataset */
-    hsize_t dims[3] = {M, M, M};
-    H5Sget_simple_extent_dims(dataspace, dims, NULL);
-
     /* mpi-local dimension of the hyperslab */
     const hsize_t count[3] = {Nloc, M, M};
     const hsize_t start[3] = {offset, 0, 0};
@@ -59,10 +55,6 @@ void read3D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
 
     dataset = H5Dopen2(file, dsetname, H5P_DEFAULT);
     dataspace = H5Dget_space(dataset);
-
-    /* overall dimension of the dataset */
-    hsize_t dims[4] = {M, M, M, 3};
-    H5Sget_simple_extent_dims(dataspace, dims, NULL);
 
     /* mpi-local dimension of the hyperslab */
     const hsize_t count[4] = {Nloc, M, M, 3};

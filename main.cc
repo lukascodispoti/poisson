@@ -33,15 +33,14 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     /* get command line arguments */
-    int M = 1024;
     char inputfile[100], inputdset[100];
     bool restart = false;
     char restartfile[100], restartdset[100] = "phi";
     int method = 2;
-    if (argc < 3 || argc > 7) {
+    if (argc < 3 || argc > 6) {
         if (!rank)
             printf(
-                "Usage: %s <inputfile> <dataset> [<gridsize> <method: 0 "
+                "Usage: %s <inputfile> <dataset> [<method: 0 "
                 "jacobi, 1 "
                 "gauss-seidel, 2 sor> <restartfile> <restartdset>]\n",
                 argv[0]);
@@ -49,24 +48,36 @@ int main(int argc, char **argv) {
     }
     strcpy(inputfile, argv[1]);
     strcpy(inputdset, argv[2]);
-    if (argc > 3) M = atoi(argv[3]);
-    if (argc > 4) method = atoi(argv[4]);
-    if (argc > 5) {
+    if (argc > 3) method = atoi(argv[3]);
+    if (argc > 4) {
         restart = true;
-        strcpy(restartfile, argv[5]);
+        strcpy(restartfile, argv[4]);
     }
-    if (argc > 6) strcpy(restartdset, argv[6]);
+    if (argc > 5) strcpy(restartdset, argv[5]);
 
     if (!rank) {
         printf("inputfile: %s\n", inputfile);
         printf("inputdset: %s\n", inputdset);
-        printf("gridsize: %d\n", M);
         printf("method: %d\n", method);
         if (restart) {
             printf("restartfile: %s\n", restartfile);
             printf("restartdset: %s\n", restartdset);
         }
     }
+
+    /* get the gridsize from the first dimension of the first datatset */
+    hsize_t M;
+    hsize_t dims[3];
+    hid_t file_id, dset_id, dataspace;
+    file_id = H5Fopen(inputfile, H5F_ACC_RDONLY, H5P_DEFAULT);
+    dset_id = H5Dopen(file_id, inputdset, H5P_DEFAULT);
+    dataspace = H5Dget_space(dset_id);
+    H5Sget_simple_extent_dims(dataspace, dims, NULL);
+    M = dims[0];
+    H5Sclose(dataspace);
+    H5Dclose(dset_id);
+    H5Fclose(file_id);
+    if (!rank) printf("Gridsize M = %" PRIdHSIZE "\n", M);
 
     hsize_t Nloc = M / size;
     hsize_t offset = rank * Nloc;
