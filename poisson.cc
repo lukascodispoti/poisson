@@ -176,6 +176,19 @@ void write3D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
     if (!rank) printf("Finished writing file %s\n", fname);
 }
 
+hsize_t get_gridsize(char *file, char *dset) {
+    hsize_t dims[4];
+    hid_t file_id, dset_id, dataspace;
+    file_id = H5Fopen(file, H5F_ACC_RDONLY, H5P_DEFAULT);
+    dset_id = H5Dopen(file_id, dset, H5P_DEFAULT);
+    dataspace = H5Dget_space(dset_id);
+    H5Sget_simple_extent_dims(dataspace, dims, NULL);
+    H5Sclose(dataspace);
+    H5Dclose(dset_id);
+    H5Fclose(file_id);
+    return dims[0];
+}
+
 float residual(std::vector<float> &f, std::vector<float> &phi,
                std::vector<float> &left, std::vector<float> &right,
                hsize_t Nloc, const hssize_t M) {

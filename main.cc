@@ -66,17 +66,7 @@ int main(int argc, char **argv) {
     }
 
     /* get the gridsize from the first dimension of the first datatset */
-    hsize_t M;
-    hsize_t dims[3];
-    hid_t file_id, dset_id, dataspace;
-    file_id = H5Fopen(inputfile, H5F_ACC_RDONLY, H5P_DEFAULT);
-    dset_id = H5Dopen(file_id, inputdset, H5P_DEFAULT);
-    dataspace = H5Dget_space(dset_id);
-    H5Sget_simple_extent_dims(dataspace, dims, NULL);
-    M = dims[0];
-    H5Sclose(dataspace);
-    H5Dclose(dset_id);
-    H5Fclose(file_id);
+    hsize_t M = get_gridsize(inputfile, inputdset);
     if (!rank) printf("Gridsize M = %" PRIdHSIZE "\n", M);
 
     hsize_t Nloc = M / size;

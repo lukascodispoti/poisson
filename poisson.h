@@ -57,6 +57,16 @@ void write3D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
              hsize_t offset, const hsize_t M);
 
 /**
+ * @brief Return the extent of the first dimension of the dataset `dset` in the
+ * hdf5 file `file`.
+ *
+ * @param file
+ * @param dset
+ * @return hsize_t
+ */
+hsize_t get_gridsize(char *file, char *dset);
+
+/**
  * @brief Compute the residual, the norm of the difference between the left and
  * right hand side of the poisson equation.
  *
