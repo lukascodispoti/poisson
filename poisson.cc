@@ -24,6 +24,11 @@ void read1D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
 
     dataset = H5Dopen2(file, dsetname, H5P_DEFAULT);
     dataspace = H5Dget_space(dataset);
+    hsize_t ndims;
+    ndims = H5Sget_simple_extent_ndims(dataspace);
+    /* warn the user if the dataset in the file is 3D instead of 1D */
+    if (ndims == 4) 
+        if (!rank) printf("Warning: Reading 1D field from 3d dataset!\n");
 
     /* mpi-local dimension of the hyperslab */
     const hsize_t count[3] = {Nloc, M, M};
@@ -153,6 +158,11 @@ void write3D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
     H5Aclose(attribute);
     H5Sclose(attr_id);
     H5Tclose(attr_type);
+
+    /* warn the user if vector to write is 1D instead of 3D */
+    if (f.size() / (Nloc * M * M) != 3) 
+        if (!rank) printf("Warning: vector to write is not 3D!\n");
+    
 
     /* create the dataspace */
     const hsize_t dims[4] = {M, M, M, 3};
