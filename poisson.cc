@@ -411,3 +411,8 @@ void exchange(std::vector<float> &phi, std::vector<float> &left,
     MPI_Irecv(right.data(), M * M, MPI_FLOAT, next, tag, comm, &req[3]);
     MPI_Waitall(4, req, stat);
 }
+
+bool endswith(std::string const &value, std::string const &ending) {
+    if (ending.size() > value.size()) return false;
+    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}

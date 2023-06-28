@@ -2,9 +2,10 @@
  * @file poisson.cc
  * @author lukascodispoti
  * @brief Solve the poisson equation in a 3D periodic domain using a central
- * finite difference scheme and the Jacobi method. File i/o is done using HDF5.
+ * finite difference scheme.
  * The program is parallelized using MPI. The domain is decomposed into slices
  * along the x axis. The boundaries are exchanged after each iteration.
+ * File i/o is done using parallel HDF5.
  * @version 0.1
  * @date 2023-05-22
  *
@@ -32,28 +33,55 @@ int main(int argc, char **argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    /* get command line arguments */
+    /* command line arguments */
     char inputfile[100], inputdset[100];
+    char outputfile[100] = "phi.h5", outputdset[100] = "phi";
     bool restart = false;
     char restartfile[100], restartdset[100] = "phi";
     int method = 2;
-    if (argc < 3 || argc > 6) {
-        if (!rank)
-            printf(
-                "Usage: %s <inputfile> <dataset> [<method: 0 "
-                "jacobi, 1 "
-                "gauss-seidel, 2 sor> <restartfile> <restartdset>]\n",
-                argv[0]);
-        MPI_Finalize();
+    for (int i = 0; i < argc; i++) {
+        if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h") || argc < 2) {
+            if (!rank) {
+                printf("Usage: %s <inputfile> <inputdset> [options]\n",
+                       argv[0]);
+                printf("Options:\n");
+                printf("  -h, --help\t\t\tPrint this message\n");
+                printf(
+                    "  -m, --method <method>\t\t"
+                    "0: Jacobi, 1: Gauss-Seidel, 2: SOR\n");
+                printf(
+                    "  -r, --restart <file>\t\tRestart from "
+                    "restartfile\n");
+                printf(
+                    "  -d, --restartdset <dset>\tRestart from "
+                    "restartdset\n");
+                printf("  -o, --outputfile <file>\tOutput to outputfile\n");
+                printf(
+                    "  -t, --outputdset <dset>\tOutput to "
+                    "outputdset\n");
+            }
+            MPI_Finalize();
+            return 0;
+        }
+        if (!strcmp(argv[i], "-r") || !strcmp(argv[i], "--restart")) {
+            restart = true;
+            strcpy(restartfile, argv[i + 1]);
+            if (!endswith(restartfile, ".h5")) strcat(restartfile, ".h5");
+        }
+        if (!strcmp(argv[i], "-d") || !strcmp(argv[i], "--restartdset")) {
+            strcpy(restartdset, argv[i + 1]);
+        }
+        if (!strcmp(argv[i], "-o") || !strcmp(argv[i], "--outputfile")) {
+            strcpy(outputfile, argv[i + 1]);
+            if (!endswith(outputfile, ".h5")) strcat(outputfile, ".h5");
+        }
+        if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--outputdset")) {
+            strcpy(outputdset, argv[i + 1]);
+        }
+        if (!strcmp(argv[i], "-m") || !strcmp(argv[i], "--method")) {
+            method = atoi(argv[i + 1]);
+        }
     }
-    strcpy(inputfile, argv[1]);
-    strcpy(inputdset, argv[2]);
-    if (argc > 3) method = atoi(argv[3]);
-    if (argc > 4) {
-        restart = true;
-        strcpy(restartfile, argv[4]);
-    }
-    if (argc > 5) strcpy(restartdset, argv[5]);
 
     if (!rank) {
         printf("inputfile: %s\n", inputfile);
@@ -63,6 +91,8 @@ int main(int argc, char **argv) {
             printf("restartfile: %s\n", restartfile);
             printf("restartdset: %s\n", restartdset);
         }
+        printf("outputfile: %s\n", outputfile);
+        printf("outputdset: %s\n", outputdset);
     }
 
     /* get the gridsize from the first dimension of the first datatset */
@@ -96,10 +126,8 @@ int main(int argc, char **argv) {
     read1D(f, inputfile, inputdset, Nloc, offset, M);
 
     std::vector<float> phi(Nloc * M * M, 0);
-    if (restart) {
-        char dset[] = "phi";
-        read1D(phi, restartfile, dset, Nloc, offset, M);
-    }
+    if (restart) read1D(phi, restartfile, restartdset, Nloc, offset, M);
+
     std::vector<float> left(M * M);
     std::vector<float> right(M * M);
 
@@ -108,10 +136,6 @@ int main(int argc, char **argv) {
     const int dump_interval = 100;
     int iter = 0;
     float res = 1e10;
-
-    /* output file and dataset */
-    char outfname[100] = "phi.h5";
-    char outdset[100] = "phi";
 
     /* create the residual file */
     FILE *fp;
@@ -128,14 +152,14 @@ int main(int argc, char **argv) {
         iter++;
         if (!rank) printf("iter: %d, residual: %f\n", iter, res);
         if (iter % dump_interval == 0)
-            write1D(phi, outfname, outdset, Nloc, offset, M);
+            write1D(phi, outputfile, outputdset, Nloc, offset, M);
         if (!rank) {
             fp = fopen(fname, "a");
             fprintf(fp, "%d,%f\n", iter, res);
             fclose(fp);
         }
     }
-    write1D(phi, outfname, outdset, Nloc, offset, M);
+    write1D(phi, outputfile, outputdset, Nloc, offset, M);
 
     MPI_Finalize();
     return 0;

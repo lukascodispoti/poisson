@@ -4,6 +4,7 @@
 #include <hdf5.h>
 
 #include <cmath>
+#include <string>
 #include <vector>
 
 /**
@@ -146,5 +147,16 @@ void exchange(std::vector<float> &phi, std::vector<float> &left,
  * @return size_t
  */
 size_t loc(hssize_t, hssize_t, hssize_t, const hssize_t);
+
+/**
+ * @brief Returns true if the string `value` ends with the string `ending`,
+ * otherwise return false.
+ *
+ * @param value
+ * @param ending
+ * @return true
+ * @return false
+ */
+bool endswith(std::string const &value, std::string const &ending);
 
 #endif
