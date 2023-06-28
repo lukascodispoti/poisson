@@ -1,6 +1,6 @@
 #include "poisson.h"
 
-size_t loc_idx(hssize_t i, hssize_t j, hssize_t k, const hssize_t M) {
+size_t loc(hssize_t i, hssize_t j, hssize_t k, const hssize_t M) {
     i >= M ? i -= M : i;
     j >= M ? j -= M : j;
     k >= M ? k -= M : k;
@@ -200,42 +200,42 @@ float residual(std::vector<float> &f, std::vector<float> &phi,
     for (i = 1; i < (long long)Nloc - 1; i++)
         for (j = 0; j < M; j++)
             for (k = 0; k < M; k++) {
-                nabla2f = phi[loc_idx(i + 1, j, k, M)] +
-                          phi[loc_idx(i - 1, j, k, M)] +
-                          phi[loc_idx(i, j + 1, k, M)] +
-                          phi[loc_idx(i, j - 1, k, M)] +
-                          phi[loc_idx(i, j, k + 1, M)] +
-                          phi[loc_idx(i, j, k - 1, M)] -
-                          6 * phi[loc_idx(i, j, k, M)];
+                nabla2f = phi[loc(i + 1, j, k, M)] +
+                          phi[loc(i - 1, j, k, M)] +
+                          phi[loc(i, j + 1, k, M)] +
+                          phi[loc(i, j - 1, k, M)] +
+                          phi[loc(i, j, k + 1, M)] +
+                          phi[loc(i, j, k - 1, M)] -
+                          6 * phi[loc(i, j, k, M)];
                 nabla2f /= h * h;
-                res += (nabla2f - f[loc_idx(i, j, k, M)]) *
-                       (nabla2f - f[loc_idx(i, j, k, M)]);
+                res += (nabla2f - f[loc(i, j, k, M)]) *
+                       (nabla2f - f[loc(i, j, k, M)]);
             }
     /* left boundary */
     i = 0;
     for (j = 0; j < M; j++)
         for (k = 0; k < M; k++) {
             nabla2f =
-                phi[loc_idx(i + 1, j, k, M)] + left[loc_idx(0, j, k, M)] +
-                phi[loc_idx(i, j + 1, k, M)] + phi[loc_idx(i, j - 1, k, M)] +
-                phi[loc_idx(i, j, k + 1, M)] + phi[loc_idx(i, j, k - 1, M)] -
-                6 * phi[loc_idx(i, j, k, M)];
+                phi[loc(i + 1, j, k, M)] + left[loc(0, j, k, M)] +
+                phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
+                phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
+                6 * phi[loc(i, j, k, M)];
             nabla2f /= h * h;
-            res += (nabla2f - f[loc_idx(i, j, k, M)]) *
-                   (nabla2f - f[loc_idx(i, j, k, M)]);
+            res += (nabla2f - f[loc(i, j, k, M)]) *
+                   (nabla2f - f[loc(i, j, k, M)]);
         }
     /* right boundary */
     i = Nloc - 1;
     for (j = 0; j < M; j++)
         for (k = 0; k < M; k++) {
             nabla2f =
-                right[loc_idx(0, j, k, M)] + phi[loc_idx(i - 1, j, k, M)] +
-                phi[loc_idx(i, j + 1, k, M)] + phi[loc_idx(i, j - 1, k, M)] +
-                phi[loc_idx(i, j, k + 1, M)] + phi[loc_idx(i, j, k - 1, M)] -
-                6 * phi[loc_idx(i, j, k, M)];
+                right[loc(0, j, k, M)] + phi[loc(i - 1, j, k, M)] +
+                phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
+                phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
+                6 * phi[loc(i, j, k, M)];
             nabla2f /= h * h;
-            res += (nabla2f - f[loc_idx(i, j, k, M)]) *
-                   (nabla2f - f[loc_idx(i, j, k, M)]);
+            res += (nabla2f - f[loc(i, j, k, M)]) *
+                   (nabla2f - f[loc(i, j, k, M)]);
         }
 
     MPI_Allreduce(MPI_IN_PLACE, &res, 1, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
@@ -251,35 +251,35 @@ void Jacobi(std::vector<float> &f, std::vector<float> &phi,
     for (i = 1; i < (long long)Nloc - 1; i++)
         for (j = 0; j < M; j++)
             for (k = 0; k < M; k++) {
-                phinew[loc_idx(i, j, k, M)] = (phi[loc_idx(i + 1, j, k, M)] +
-                                               phi[loc_idx(i - 1, j, k, M)] +
-                                               phi[loc_idx(i, j + 1, k, M)] +
-                                               phi[loc_idx(i, j - 1, k, M)] +
-                                               phi[loc_idx(i, j, k + 1, M)] +
-                                               phi[loc_idx(i, j, k - 1, M)] -
-                                               h * h * f[loc_idx(i, j, k, M)]) /
+                phinew[loc(i, j, k, M)] = (phi[loc(i + 1, j, k, M)] +
+                                               phi[loc(i - 1, j, k, M)] +
+                                               phi[loc(i, j + 1, k, M)] +
+                                               phi[loc(i, j - 1, k, M)] +
+                                               phi[loc(i, j, k + 1, M)] +
+                                               phi[loc(i, j, k - 1, M)] -
+                                               h * h * f[loc(i, j, k, M)]) /
                                               6.f;
             }
     /* left boundary */
     i = 0;
     for (j = 0; j < M; j++)
         for (k = 0; k < M; k++) {
-            phinew[loc_idx(i, j, k, M)] =
-                (phi[loc_idx(i + 1, j, k, M)] + left[loc_idx(0, j, k, M)] +
-                 phi[loc_idx(i, j + 1, k, M)] + phi[loc_idx(i, j - 1, k, M)] +
-                 phi[loc_idx(i, j, k + 1, M)] + phi[loc_idx(i, j, k - 1, M)] -
-                 h * h * f[loc_idx(i, j, k, M)]) /
+            phinew[loc(i, j, k, M)] =
+                (phi[loc(i + 1, j, k, M)] + left[loc(0, j, k, M)] +
+                 phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
+                 phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
+                 h * h * f[loc(i, j, k, M)]) /
                 6.f;
         }
     /* right boundary */
     i = Nloc - 1;
     for (j = 0; j < M; j++)
         for (k = 0; k < M; k++) {
-            phinew[loc_idx(i, j, k, M)] =
-                (right[loc_idx(0, j, k, M)] + phi[loc_idx(i - 1, j, k, M)] +
-                 phi[loc_idx(i, j + 1, k, M)] + phi[loc_idx(i, j - 1, k, M)] +
-                 phi[loc_idx(i, j, k + 1, M)] + phi[loc_idx(i, j, k - 1, M)] -
-                 h * h * f[loc_idx(i, j, k, M)]) /
+            phinew[loc(i, j, k, M)] =
+                (right[loc(0, j, k, M)] + phi[loc(i - 1, j, k, M)] +
+                 phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
+                 phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
+                 h * h * f[loc(i, j, k, M)]) /
                 6.f;
         }
 
@@ -295,35 +295,35 @@ void GaussSeidel(std::vector<float> &f, std::vector<float> &phi,
     for (i = 1; i < (long long)Nloc - 1; i++)
         for (j = 0; j < M; j++)
             for (k = 0; k < M; k++) {
-                phi[loc_idx(i, j, k, M)] = (phi[loc_idx(i + 1, j, k, M)] +
-                                            phi[loc_idx(i - 1, j, k, M)] +
-                                            phi[loc_idx(i, j + 1, k, M)] +
-                                            phi[loc_idx(i, j - 1, k, M)] +
-                                            phi[loc_idx(i, j, k + 1, M)] +
-                                            phi[loc_idx(i, j, k - 1, M)] -
-                                            h * h * f[loc_idx(i, j, k, M)]) /
+                phi[loc(i, j, k, M)] = (phi[loc(i + 1, j, k, M)] +
+                                            phi[loc(i - 1, j, k, M)] +
+                                            phi[loc(i, j + 1, k, M)] +
+                                            phi[loc(i, j - 1, k, M)] +
+                                            phi[loc(i, j, k + 1, M)] +
+                                            phi[loc(i, j, k - 1, M)] -
+                                            h * h * f[loc(i, j, k, M)]) /
                                            6.f;
             }
     /* left boundary */
     i = 0;
     for (j = 0; j < M; j++)
         for (k = 0; k < M; k++) {
-            phi[loc_idx(i, j, k, M)] =
-                (phi[loc_idx(i + 1, j, k, M)] + left[loc_idx(0, j, k, M)] +
-                 phi[loc_idx(i, j + 1, k, M)] + phi[loc_idx(i, j - 1, k, M)] +
-                 phi[loc_idx(i, j, k + 1, M)] + phi[loc_idx(i, j, k - 1, M)] -
-                 h * h * f[loc_idx(i, j, k, M)]) /
+            phi[loc(i, j, k, M)] =
+                (phi[loc(i + 1, j, k, M)] + left[loc(0, j, k, M)] +
+                 phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
+                 phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
+                 h * h * f[loc(i, j, k, M)]) /
                 6.f;
         }
     /* right boundary */
     i = Nloc - 1;
     for (j = 0; j < M; j++)
         for (k = 0; k < M; k++) {
-            phi[loc_idx(i, j, k, M)] =
-                (right[loc_idx(0, j, k, M)] + phi[loc_idx(i - 1, j, k, M)] +
-                 phi[loc_idx(i, j + 1, k, M)] + phi[loc_idx(i, j - 1, k, M)] +
-                 phi[loc_idx(i, j, k + 1, M)] + phi[loc_idx(i, j, k - 1, M)] -
-                 h * h * f[loc_idx(i, j, k, M)]) /
+            phi[loc(i, j, k, M)] =
+                (right[loc(0, j, k, M)] + phi[loc(i - 1, j, k, M)] +
+                 phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
+                 phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
+                 h * h * f[loc(i, j, k, M)]) /
                 6.f;
         }
 }
@@ -338,46 +338,46 @@ void SOR(std::vector<float> &f, std::vector<float> &phi,
     for (i = 1; i < (long long)Nloc - 1; i++)
         for (j = 0; j < M; j++)
             for (k = 0; k < M; k++) {
-                phi[loc_idx(i, j, k, M)] =
-                    (1 - omega) * phi[loc_idx(i, j, k, M)] +
+                phi[loc(i, j, k, M)] =
+                    (1 - omega) * phi[loc(i, j, k, M)] +
                     omega *
-                        (phi[loc_idx(i + 1, j, k, M)] +
-                         phi[loc_idx(i - 1, j, k, M)] +
-                         phi[loc_idx(i, j + 1, k, M)] +
-                         phi[loc_idx(i, j - 1, k, M)] +
-                         phi[loc_idx(i, j, k + 1, M)] +
-                         phi[loc_idx(i, j, k - 1, M)] -
-                         h * h * f[loc_idx(i, j, k, M)]) /
+                        (phi[loc(i + 1, j, k, M)] +
+                         phi[loc(i - 1, j, k, M)] +
+                         phi[loc(i, j + 1, k, M)] +
+                         phi[loc(i, j - 1, k, M)] +
+                         phi[loc(i, j, k + 1, M)] +
+                         phi[loc(i, j, k - 1, M)] -
+                         h * h * f[loc(i, j, k, M)]) /
                         6.f;
             }
     /* left boundary */
     i = 0;
     for (j = 0; j < M; j++)
         for (k = 0; k < M; k++) {
-            phi[loc_idx(i, j, k, M)] =
-                (1 - omega) * phi[loc_idx(i, j, k, M)] +
+            phi[loc(i, j, k, M)] =
+                (1 - omega) * phi[loc(i, j, k, M)] +
                 omega *
-                    (phi[loc_idx(i + 1, j, k, M)] + left[loc_idx(0, j, k, M)] +
-                     phi[loc_idx(i, j + 1, k, M)] +
-                     phi[loc_idx(i, j - 1, k, M)] +
-                     phi[loc_idx(i, j, k + 1, M)] +
-                     phi[loc_idx(i, j, k - 1, M)] -
-                     h * h * f[loc_idx(i, j, k, M)]) /
+                    (phi[loc(i + 1, j, k, M)] + left[loc(0, j, k, M)] +
+                     phi[loc(i, j + 1, k, M)] +
+                     phi[loc(i, j - 1, k, M)] +
+                     phi[loc(i, j, k + 1, M)] +
+                     phi[loc(i, j, k - 1, M)] -
+                     h * h * f[loc(i, j, k, M)]) /
                     6.f;
         }
     /* right boundary */
     i = Nloc - 1;
     for (j = 0; j < M; j++)
         for (k = 0; k < M; k++) {
-            phi[loc_idx(i, j, k, M)] =
-                (1 - omega) * phi[loc_idx(i, j, k, M)] +
+            phi[loc(i, j, k, M)] =
+                (1 - omega) * phi[loc(i, j, k, M)] +
                 omega *
-                    (right[loc_idx(0, j, k, M)] + phi[loc_idx(i - 1, j, k, M)] +
-                     phi[loc_idx(i, j + 1, k, M)] +
-                     phi[loc_idx(i, j - 1, k, M)] +
-                     phi[loc_idx(i, j, k + 1, M)] +
-                     phi[loc_idx(i, j, k - 1, M)] -
-                     h * h * f[loc_idx(i, j, k, M)]) /
+                    (right[loc(0, j, k, M)] + phi[loc(i - 1, j, k, M)] +
+                     phi[loc(i, j + 1, k, M)] +
+                     phi[loc(i, j - 1, k, M)] +
+                     phi[loc(i, j, k + 1, M)] +
+                     phi[loc(i, j, k - 1, M)] -
+                     h * h * f[loc(i, j, k, M)]) /
                     6.f;
         }
 }

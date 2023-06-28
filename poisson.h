@@ -145,6 +145,6 @@ void exchange(std::vector<float> &phi, std::vector<float> &left,
  *
  * @return size_t
  */
-size_t loc_idx(hssize_t, hssize_t, hssize_t, const hssize_t);
+size_t loc(hssize_t, hssize_t, hssize_t, const hssize_t);
 
 #endif
