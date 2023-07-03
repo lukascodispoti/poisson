@@ -106,8 +106,7 @@ int main(int argc, char **argv) {
     rank == size - 1 ? Nloc += M % size : Nloc;
 
     /* select method */
-    void (*update)(std::vector<float> &, std::vector<float> &,
-                   std::vector<float> &, std::vector<float> &, hsize_t,
+    void (*update)(std::vector<float> &, std::vector<float> &, hsize_t,
                    const hssize_t);
     if (method == 0) {
         update = &Jacobi;
@@ -127,11 +126,12 @@ int main(int argc, char **argv) {
     std::vector<float> f(Nloc * M * M);
     read1D(f, inputfile, inputdset, Nloc, offset, M);
 
-    std::vector<float> phi(Nloc * M * M, 0);
+    std::vector<float> phi((Nloc + 2) * M * M, 0);
     if (restart) read1D(phi, restartfile, restartdset, Nloc, offset, M);
 
-    std::vector<float> left(M * M);
-    std::vector<float> right(M * M);
+    /* pad phi with M x M zeros at the beginning */
+    phi.insert(phi.begin(), M * M, 0);
+    exchange(phi, Nloc, M);
 
     const float tol = 1e-5;
     const int max_iter = 10000;
@@ -148,9 +148,9 @@ int main(int argc, char **argv) {
 
     /* main loop */
     while (res > tol && iter < max_iter) {
-        update(f, phi, left, right, Nloc, M);
-        res = residual(f, phi, left, right, Nloc, M);
-        exchange(phi, left, right, Nloc, M);
+        update(f, phi, Nloc, M);
+        exchange(phi, Nloc, M);
+        res = residual(f, phi, Nloc, M);
         iter++;
         if (!rank) printf("iter: %d, residual: %f\n", iter, res);
         if (iter % dump_interval == 0)
