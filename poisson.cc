@@ -78,7 +78,7 @@ void read3D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
 }
 
 void write1D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
-             hsize_t offset, const hsize_t M) {
+             hsize_t offset, const hsize_t M, int pad) {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
@@ -119,7 +119,7 @@ void write1D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
     H5Sselect_hyperslab(dataspace, H5S_SELECT_SET, start, NULL, count, NULL);
 
     memspace = H5Screate_simple(3, count, NULL);
-    H5Dwrite(dataset, H5T_NATIVE_FLOAT, memspace, dataspace, xp, f.data());
+    H5Dwrite(dataset, H5T_NATIVE_FLOAT, memspace, dataspace, xp, &f[pad]);
     H5Sclose(memspace);
     H5Sclose(dataspace);
     H5Dclose(dataset);

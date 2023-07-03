@@ -130,7 +130,8 @@ int main(int argc, char **argv) {
     if (restart) read1D(phi, restartfile, restartdset, Nloc, offset, M);
 
     /* pad phi with M x M zeros at the beginning */
-    phi.insert(phi.begin(), M * M, 0);
+    int pad = M * M;
+    phi.insert(phi.begin(), pad, 0);
     exchange(phi, Nloc, M);
 
     const float tol = 1e-5;
@@ -149,19 +150,19 @@ int main(int argc, char **argv) {
     /* main loop */
     while (res > tol && iter < max_iter) {
         update(f, phi, Nloc, M);
-        exchange(phi, Nloc, M);
         res = residual(f, phi, Nloc, M);
+        exchange(phi, Nloc, M);
         iter++;
         if (!rank) printf("iter: %d, residual: %f\n", iter, res);
         if (iter % dump_interval == 0)
-            write1D(phi, outputfile, outputdset, Nloc, offset, M);
+            write1D(phi, outputfile, outputdset, Nloc, offset, M, pad);
         if (!rank) {
             fp = fopen(fname, "a");
             fprintf(fp, "%d,%f\n", iter, res);
             fclose(fp);
         }
     }
-    write1D(phi, outputfile, outputdset, Nloc, offset, M);
+    write1D(phi, outputfile, outputdset, Nloc, offset, M, pad);
 
     MPI_Finalize();
     return 0;

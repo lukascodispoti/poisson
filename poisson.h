@@ -47,9 +47,10 @@ void read3D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
  * @param Nloc
  * @param offset
  * @param M
+ * @param pad
  */
 void write1D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
-             hsize_t offset, const hsize_t M);
+             hsize_t offset, const hsize_t M, int pad  = 0);
 
 /**
  * @brief Write three components of a M * M * M field to an hdf5 file.
