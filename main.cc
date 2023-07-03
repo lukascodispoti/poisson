@@ -39,7 +39,9 @@ int main(int argc, char **argv) {
     bool restart = false;
     char restartfile[100], restartdset[100] = "phi";
     int method = 2;
-    for (int i = 0; i < argc; i++) {
+    strcpy(inputfile, argv[1]);
+    strcpy(inputdset, argv[2]);
+    for (int i = 3; i < argc; i++) {
         if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h") || argc < 2) {
             if (!rank) {
                 printf("Usage: %s <inputfile> <inputdset> [options]\n",
