@@ -442,9 +442,31 @@ void SOR(std::vector<float> &f, std::vector<float> &phi,
 }
 void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
          const hssize_t M) {
-    for (ssize_t i = 0; i < (long long)Nloc; i++) 
-        sweep_phi(f, phi, i, M);
+    // int rank, size;
+    // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    // MPI_Comm_size(MPI_COMM_WORLD, &size);
+    // int tag = 0;
+    // int prev = (rank == 0) ? size - 1 : rank - 1;
+    // int next = (rank == size - 1) ? 0 : rank + 1;
+    // MPI_Request req[2];
+    // MPI_Status stat[2];
+    // MPI_Comm comm = MPI_COMM_WORLD;
 
+    ssize_t i = 0;
+    // sweep_phi(f, phi, i, M);
+
+    // /* send updated left boundary to next rank */
+    // MPI_Isend(&phi[M * M], M * M, MPI_FLOAT, prev, tag, comm, &req[0]);
+    // MPI_Irecv(&phi[(Nloc + 1) * M * M], M * M, MPI_FLOAT, next, tag, comm,
+    //           &req[1]);
+
+    for (i = 0; i < (long long)Nloc; i++) {
+        sweep_phi(f, phi, i, M);
+    }
+
+    // MPI_Wait(req, stat);
+    // i = Nloc;
+    // sweep_phi(f, phi, i, M);
 }
 
 void exchange(std::vector<float> &phi, std::vector<float> &left,
