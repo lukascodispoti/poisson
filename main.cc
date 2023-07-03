@@ -39,6 +39,7 @@ int main(int argc, char **argv) {
     bool restart = false;
     char restartfile[100], restartdset[100] = "phi";
     int method = 2;
+    float omega = 1.8;
     strcpy(inputfile, argv[1]);
     strcpy(inputdset, argv[2]);
     for (int i = 3; i < argc; i++) {
@@ -61,6 +62,7 @@ int main(int argc, char **argv) {
                 printf(
                     "  -t, --outputdset <dset>\tOutput to "
                     "outputdset\n");
+                printf("  -w, --omega <omega>\t\tSOR parameter\n");
             }
             MPI_Finalize();
             return 0;
@@ -70,19 +72,18 @@ int main(int argc, char **argv) {
             strcpy(restartfile, argv[i + 1]);
             if (!endswith(restartfile, ".h5")) strcat(restartfile, ".h5");
         }
-        if (!strcmp(argv[i], "-d") || !strcmp(argv[i], "--restartdset")) {
+        if (!strcmp(argv[i], "-d") || !strcmp(argv[i], "--restartdset"))
             strcpy(restartdset, argv[i + 1]);
-        }
         if (!strcmp(argv[i], "-o") || !strcmp(argv[i], "--outputfile")) {
             strcpy(outputfile, argv[i + 1]);
             if (!endswith(outputfile, ".h5")) strcat(outputfile, ".h5");
         }
-        if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--outputdset")) {
+        if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--outputdset"))
             strcpy(outputdset, argv[i + 1]);
-        }
-        if (!strcmp(argv[i], "-m") || !strcmp(argv[i], "--method")) {
+        if (!strcmp(argv[i], "-m") || !strcmp(argv[i], "--method"))
             method = atoi(argv[i + 1]);
-        }
+        if (!strcmp(argv[i], "-w") || !strcmp(argv[i], "--omega"))
+            omega = atof(argv[i + 1]);
     }
 
     if (!rank) {
@@ -96,6 +97,8 @@ int main(int argc, char **argv) {
         printf("outputfile: %s\n", outputfile);
         printf("outputdset: %s\n", outputdset);
     }
+    if (method == 1) omega = 1.0;
+    set_omega(omega);
 
     /* get the gridsize from the first dimension of the first datatset */
     hsize_t M = get_gridsize(inputfile, inputdset);

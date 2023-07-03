@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+void set_omega(float omega);
+
 /**
  * @brief Return the serialized index of a point in a M * M * M grid.
  *

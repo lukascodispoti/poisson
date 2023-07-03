@@ -1,5 +1,9 @@
 #include "poisson.h"
 
+static float OMEGA;
+
+void set_omega(float omega) { OMEGA = omega; }
+
 size_t loc(hssize_t i, hssize_t j, hssize_t k, const hssize_t M) {
     i >= M ? i -= M : i;
     j >= M ? j -= M : j;
@@ -331,6 +335,22 @@ void Jacobi(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
     std::swap(phi, phinew);
 }
 
+void sweep_phi(std::vector<float> &f, std::vector<float> &phi, ssize_t i,
+               const hssize_t M) {
+    float h = 2 * M_PI / M;
+    ssize_t ii = i + 1;
+    for (ssize_t j = 0; j < M; j++)
+        for (ssize_t k = 0; k < M; k++)
+            phi[loc(ii, j, k, M)] =
+                (1 - OMEGA) * phi[loc(ii, j, k, M)] +
+                OMEGA *
+                    (phi[loc(ii + 1, j, k, M)] + phi[loc(ii - 1, j, k, M)] +
+                     phi[loc(ii, j + 1, k, M)] + phi[loc(ii, j - 1, k, M)] +
+                     phi[loc(ii, j, k + 1, M)] + phi[loc(ii, j, k - 1, M)] -
+                     h * h * f[loc(i, j, k, M)]) /
+                    6.f;
+}
+
 void GaussSeidel(std::vector<float> &f, std::vector<float> &phi,
                  std::vector<float> &left, std::vector<float> &right,
                  hsize_t Nloc, const hssize_t M) {
@@ -372,21 +392,7 @@ void GaussSeidel(std::vector<float> &f, std::vector<float> &phi,
 }
 void GaussSeidel(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
                  const hssize_t M) {
-    /* use Gauss-Seidel to update the solution*/
-    float h = 2 * M_PI / M;
-    ssize_t i, j, k, ii;
-    for (i = 0; i < (long long)Nloc; i++) {
-        ii = i + 1;
-        for (j = 0; j < M; j++)
-            for (k = 0; k < M; k++) {
-                phi[loc(ii, j, k, M)] =
-                    (phi[loc(ii + 1, j, k, M)] + phi[loc(ii - 1, j, k, M)] +
-                     phi[loc(ii, j + 1, k, M)] + phi[loc(ii, j - 1, k, M)] +
-                     phi[loc(ii, j, k + 1, M)] + phi[loc(ii, j, k - 1, M)] -
-                     h * h * f[loc(i, j, k, M)]) /
-                    6.f;
-            }
-    }
+    for (ssize_t i = 0; i < (long long)Nloc; i++) sweep_phi(f, phi, i, M);
 }
 
 void SOR(std::vector<float> &f, std::vector<float> &phi,
@@ -395,13 +401,12 @@ void SOR(std::vector<float> &f, std::vector<float> &phi,
     /* use successive overrelaxation to update phi */
     float h = 2 * M_PI / M;
     ssize_t i, j, k;
-    float omega = 1.8;
     for (i = 1; i < (long long)Nloc - 1; i++)
         for (j = 0; j < M; j++)
             for (k = 0; k < M; k++) {
                 phi[loc(i, j, k, M)] =
-                    (1 - omega) * phi[loc(i, j, k, M)] +
-                    omega *
+                    (1 - OMEGA) * phi[loc(i, j, k, M)] +
+                    OMEGA *
                         (phi[loc(i + 1, j, k, M)] + phi[loc(i - 1, j, k, M)] +
                          phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
                          phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
@@ -413,8 +418,8 @@ void SOR(std::vector<float> &f, std::vector<float> &phi,
     for (j = 0; j < M; j++)
         for (k = 0; k < M; k++) {
             phi[loc(i, j, k, M)] =
-                (1 - omega) * phi[loc(i, j, k, M)] +
-                omega *
+                (1 - OMEGA) * phi[loc(i, j, k, M)] +
+                OMEGA *
                     (phi[loc(i + 1, j, k, M)] + left[loc(0, j, k, M)] +
                      phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
                      phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
@@ -426,8 +431,8 @@ void SOR(std::vector<float> &f, std::vector<float> &phi,
     for (j = 0; j < M; j++)
         for (k = 0; k < M; k++) {
             phi[loc(i, j, k, M)] =
-                (1 - omega) * phi[loc(i, j, k, M)] +
-                omega *
+                (1 - OMEGA) * phi[loc(i, j, k, M)] +
+                OMEGA *
                     (right[loc(0, j, k, M)] + phi[loc(i - 1, j, k, M)] +
                      phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
                      phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
@@ -437,24 +442,9 @@ void SOR(std::vector<float> &f, std::vector<float> &phi,
 }
 void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
          const hssize_t M) {
-    /* use successive overrelaxation to update phi */
-    float h = 2 * M_PI / M;
-    ssize_t i, j, k, ii;
-    float omega = 1.8;
-    for (i = 0; i < (long long)Nloc; i++) {
-        ii = i + 1;
-        for (j = 0; j < M; j++)
-            for (k = 0; k < M; k++) {
-                phi[loc(ii, j, k, M)] =
-                    (1 - omega) * phi[loc(ii, j, k, M)] +
-                    omega *
-                        (phi[loc(ii + 1, j, k, M)] + phi[loc(ii - 1, j, k, M)] +
-                         phi[loc(ii, j + 1, k, M)] + phi[loc(ii, j - 1, k, M)] +
-                         phi[loc(ii, j, k + 1, M)] + phi[loc(ii, j, k - 1, M)] -
-                         h * h * f[loc(i, j, k, M)]) /
-                        6.f;
-            }
-    }
+    for (ssize_t i = 0; i < (long long)Nloc; i++) 
+        sweep_phi(f, phi, i, M);
+
 }
 
 void exchange(std::vector<float> &phi, std::vector<float> &left,
