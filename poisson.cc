@@ -390,10 +390,6 @@ void GaussSeidel(std::vector<float> &f, std::vector<float> &phi,
                 6.f;
         }
 }
-void GaussSeidel(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
-                 const hssize_t M) {
-    for (ssize_t i = 0; i < (long long)Nloc; i++) sweep_phi(f, phi, i, M);
-}
 
 void SOR(std::vector<float> &f, std::vector<float> &phi,
          std::vector<float> &left, std::vector<float> &right, hsize_t Nloc,
