@@ -135,7 +135,6 @@ int main(int argc, char **argv) {
     /* pad phi with M x M zeros at the beginning */
     int pad = M * M;
     phi.insert(phi.begin(), pad, 0);
-    exchange(phi, Nloc, M);
 
     const float tol = 1e-5;
     const int max_iter = 10000;
@@ -154,7 +153,6 @@ int main(int argc, char **argv) {
     while (res > tol && iter < max_iter) {
         update(f, phi, Nloc, M);
         res = residual(f, phi, Nloc, M);
-        exchange(phi, Nloc, M);
         iter++;
         if (!rank) printf("iter: %d, residual: %f\n", iter, res);
         if (iter % dump_interval == 0)

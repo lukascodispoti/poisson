@@ -202,7 +202,6 @@ hsize_t get_gridsize(char *file, char *dset) {
     return dims[0];
 }
 
-
 float residual(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
                const hssize_t M) {
     /* Calculate the residual: res = norm(\nabla^2 phi - f) */
@@ -246,6 +245,7 @@ void Jacobi(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
             }
     }
     std::swap(phi, phinew);
+    exchange(phi, Nloc, M);
 }
 
 void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
@@ -256,7 +256,7 @@ void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
     for (i = 0; i < (ssize_t)Nloc; i++) {
         ii = i + 1;
         for (j = 0; j < M; j++)
-            for (k = 0; k < M; k++)
+            for (k = (i + j) % 2; k < M; k += 2)
                 if ((i + j + k) % 2 == 0)
                     phi[loc(ii, j, k, M)] =
                         (1 - OMEGA) * phi[loc(ii, j, k, M)] +
@@ -270,10 +270,12 @@ void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
                              h * h * f[loc(i, j, k, M)]) /
                             6.f;
     }
+    exchange(phi, Nloc, M);
+
     for (i = 0; i < (ssize_t)Nloc; i++) {
         ii = i + 1;
         for (j = 0; j < M; j++)
-            for (k = 0; k < M; k++)
+            for (k = (i + j + 1) % 2; k < M; k+=2)
                 if ((i + j + k) % 2 != 0)
                     phi[loc(ii, j, k, M)] =
                         (1 - OMEGA) * phi[loc(ii, j, k, M)] +
@@ -287,6 +289,7 @@ void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
                              h * h * f[loc(i, j, k, M)]) /
                             6.f;
     }
+    exchange(phi, Nloc, M);
 }
 
 void exchange(std::vector<float> &phi, hsize_t Nloc, const int M) {
