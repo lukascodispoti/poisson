@@ -7,6 +7,15 @@
 #include <string>
 #include <vector>
 
+void set_omega(float omega);
+
+/**
+ * @brief Return the serialized index of a point in a M * M * M grid.
+ *
+ * @return size_t
+ */
+size_t loc(hssize_t, hssize_t, hssize_t, const hssize_t);
+
 /**
  * @brief Read a single component of a M * M * M field from an hdf5 file.
  *
@@ -40,9 +49,10 @@ void read3D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
  * @param Nloc
  * @param offset
  * @param M
+ * @param pad
  */
 void write1D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
-             hsize_t offset, const hsize_t M);
+             hsize_t offset, const hsize_t M, int pad  = 0);
 
 /**
  * @brief Write three components of a M * M * M field to an hdf5 file.
@@ -81,6 +91,8 @@ hsize_t get_gridsize(char *file, char *dset);
 float residual(std::vector<float> &f, std::vector<float> &phi,
                std::vector<float> &left, std::vector<float> &right,
                hsize_t Nloc, const hssize_t M);
+float residual(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
+               const hssize_t M);
 
 /**
  * @brief Update the solution of the poisson equation
@@ -101,6 +113,8 @@ float residual(std::vector<float> &f, std::vector<float> &phi,
 void Jacobi(std::vector<float> &f, std::vector<float> &phi,
             std::vector<float> &left, std::vector<float> &right, hsize_t Nloc,
             const hssize_t M);
+void Jacobi(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
+            const hssize_t M);
 
 /**
  * @brief Use Gauss Seidel to update the solution of the poisson equation.
@@ -115,6 +129,8 @@ void Jacobi(std::vector<float> &f, std::vector<float> &phi,
 void GaussSeidel(std::vector<float> &f, std::vector<float> &phi,
                  std::vector<float> &left, std::vector<float> &right,
                  hsize_t Nloc, const hssize_t M);
+void GaussSeidel(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
+                 const hssize_t M);
 
 /**
  * @brief Use SOR to update the solution of the poisson equation.
@@ -129,6 +145,8 @@ void GaussSeidel(std::vector<float> &f, std::vector<float> &phi,
 void SOR(std::vector<float> &f, std::vector<float> &phi,
          std::vector<float> &left, std::vector<float> &right, hsize_t Nloc,
          const hssize_t M);
+void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
+         const hssize_t M);
 
 /**
  * @brief Exchange the boundaries between the mpi ranks.
@@ -142,11 +160,13 @@ void exchange(std::vector<float> &phi, std::vector<float> &left,
               std::vector<float> &right, hsize_t Nloc, const int);
 
 /**
- * @brief Return the serialized index of a point in a M * M * M grid.
+ * @brief Exchange the ghost cells between the mpi ranks.
  *
- * @return size_t
+ * @param phi
+ * @param Nloc
+ * @param M
  */
-size_t loc(hssize_t, hssize_t, hssize_t, const hssize_t);
+void exchange(std::vector<float> &phi, hsize_t Nloc, const int M);
 
 /**
  * @brief Returns true if the string `value` ends with the string `ending`,

@@ -39,6 +39,7 @@ int main(int argc, char **argv) {
     bool restart = false;
     char restartfile[100], restartdset[100] = "phi";
     int method = 2;
+    float omega = 1.8;
     strcpy(inputfile, argv[1]);
     strcpy(inputdset, argv[2]);
     for (int i = 3; i < argc; i++) {
@@ -61,6 +62,7 @@ int main(int argc, char **argv) {
                 printf(
                     "  -t, --outputdset <dset>\tOutput to "
                     "outputdset\n");
+                printf("  -w, --omega <omega>\t\tSOR parameter\n");
             }
             MPI_Finalize();
             return 0;
@@ -70,19 +72,18 @@ int main(int argc, char **argv) {
             strcpy(restartfile, argv[i + 1]);
             if (!endswith(restartfile, ".h5")) strcat(restartfile, ".h5");
         }
-        if (!strcmp(argv[i], "-d") || !strcmp(argv[i], "--restartdset")) {
+        if (!strcmp(argv[i], "-d") || !strcmp(argv[i], "--restartdset"))
             strcpy(restartdset, argv[i + 1]);
-        }
         if (!strcmp(argv[i], "-o") || !strcmp(argv[i], "--outputfile")) {
             strcpy(outputfile, argv[i + 1]);
             if (!endswith(outputfile, ".h5")) strcat(outputfile, ".h5");
         }
-        if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--outputdset")) {
+        if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--outputdset"))
             strcpy(outputdset, argv[i + 1]);
-        }
-        if (!strcmp(argv[i], "-m") || !strcmp(argv[i], "--method")) {
+        if (!strcmp(argv[i], "-m") || !strcmp(argv[i], "--method"))
             method = atoi(argv[i + 1]);
-        }
+        if (!strcmp(argv[i], "-w") || !strcmp(argv[i], "--omega"))
+            omega = atof(argv[i + 1]);
     }
 
     if (!rank) {
@@ -96,6 +97,8 @@ int main(int argc, char **argv) {
         printf("outputfile: %s\n", outputfile);
         printf("outputdset: %s\n", outputdset);
     }
+    if (method == 1) omega = 1.0;
+    set_omega(omega);
 
     /* get the gridsize from the first dimension of the first datatset */
     hsize_t M = get_gridsize(inputfile, inputdset);
@@ -106,8 +109,7 @@ int main(int argc, char **argv) {
     rank == size - 1 ? Nloc += M % size : Nloc;
 
     /* select method */
-    void (*update)(std::vector<float> &, std::vector<float> &,
-                   std::vector<float> &, std::vector<float> &, hsize_t,
+    void (*update)(std::vector<float> &, std::vector<float> &, hsize_t,
                    const hssize_t);
     if (method == 0) {
         update = &Jacobi;
@@ -127,11 +129,13 @@ int main(int argc, char **argv) {
     std::vector<float> f(Nloc * M * M);
     read1D(f, inputfile, inputdset, Nloc, offset, M);
 
-    std::vector<float> phi(Nloc * M * M, 0);
+    std::vector<float> phi((Nloc + 2) * M * M, 0);
     if (restart) read1D(phi, restartfile, restartdset, Nloc, offset, M);
 
-    std::vector<float> left(M * M);
-    std::vector<float> right(M * M);
+    /* pad phi with M x M zeros at the beginning */
+    int pad = M * M;
+    phi.insert(phi.begin(), pad, 0);
+    exchange(phi, Nloc, M);
 
     const float tol = 1e-5;
     const int max_iter = 10000;
@@ -148,20 +152,20 @@ int main(int argc, char **argv) {
 
     /* main loop */
     while (res > tol && iter < max_iter) {
-        update(f, phi, left, right, Nloc, M);
-        res = residual(f, phi, left, right, Nloc, M);
-        exchange(phi, left, right, Nloc, M);
+        update(f, phi, Nloc, M);
+        res = residual(f, phi, Nloc, M);
+        exchange(phi, Nloc, M);
         iter++;
         if (!rank) printf("iter: %d, residual: %f\n", iter, res);
         if (iter % dump_interval == 0)
-            write1D(phi, outputfile, outputdset, Nloc, offset, M);
+            write1D(phi, outputfile, outputdset, Nloc, offset, M, pad);
         if (!rank) {
             fp = fopen(fname, "a");
             fprintf(fp, "%d,%f\n", iter, res);
             fclose(fp);
         }
     }
-    write1D(phi, outputfile, outputdset, Nloc, offset, M);
+    write1D(phi, outputfile, outputdset, Nloc, offset, M, pad);
 
     MPI_Finalize();
     return 0;
