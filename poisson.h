@@ -104,18 +104,8 @@ float residual(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
  * @param Nloc
  */
 void Jacobi(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
-            const hssize_t M);
+            const hssize_t M, MPI_Request *req, MPI_Status *stat);
 
-/**
- * @brief Use Gauss Seidel to update the solution of the poisson equation.
- *
- * @param f
- * @param phi
- * @param Nloc
- * @param M
- */
-void GaussSeidel(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
-                 const hssize_t M);
 
 /**
  * @brief Use SOR to update the solution of the poisson equation.
@@ -126,7 +116,7 @@ void GaussSeidel(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
  * @param M
  */
 void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
-         const hssize_t M);
+         const hssize_t M, MPI_Request *req, MPI_Status *stat);
 
 /**
  * @brief Exchange the ghost cells between the mpi ranks.

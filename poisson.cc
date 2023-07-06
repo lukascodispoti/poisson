@@ -228,7 +228,7 @@ float residual(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
 }
 
 void Jacobi(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
-            const hssize_t M) {
+            const hssize_t M, MPI_Request *req, MPI_Status *stat) {
     std::vector<float> phinew((Nloc + 2) * M * M, 0);
     float h = 2 * M_PI / M;
     ssize_t i, j, k, ii;
@@ -269,15 +269,51 @@ static void sweep(ssize_t i, const hssize_t M, std::vector<float> &phi,
 void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
          const hssize_t M) {
     ssize_t i;
-    for (i = 0; i < (ssize_t)Nloc; i++) 
-        sweep(i, M, phi, f, 0);
+    for (i = 0; i < (ssize_t)Nloc; i++) sweep(i, M, phi, f, 0);
     exchange(phi, Nloc, M);
 
-    for (i = 0; i < (ssize_t)Nloc; i++) 
-        sweep(i, M, phi, f, 1);
+    for (i = 0; i < (ssize_t)Nloc; i++) sweep(i, M, phi, f, 1);
     exchange(phi, Nloc, M);
 }
-    exchange(phi, Nloc, M);
+
+static void exchange(std::vector<float> &phi, hsize_t Nloc, const int M,
+                     MPI_Request *req) {
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    int tag = 0;
+    int prev = (rank == 0) ? size - 1 : rank - 1;
+    int next = (rank == size - 1) ? 0 : rank + 1;
+    MPI_Comm comm = MPI_COMM_WORLD;
+
+    MPI_Isend(&phi[Nloc * M * M], M * M, MPI_FLOAT, next, tag, comm, &req[0]);
+    MPI_Isend(&phi[M * M], M * M, MPI_FLOAT, prev, tag, comm, &req[1]);
+    MPI_Irecv(&phi[0], M * M, MPI_FLOAT, prev, tag, comm, &req[2]);
+    MPI_Irecv(&phi[(Nloc + 1) * M * M], M * M, MPI_FLOAT, next, tag, comm,
+              &req[3]);
+}
+
+void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
+         const hssize_t M, MPI_Request *req, MPI_Status *stat) {
+    ssize_t i;
+    /* sweep boundaries first */
+    sweep(0, M, phi, f, 0);
+    sweep((ssize_t)Nloc - 1, M, phi, f, 0);
+
+    /* exchange the newly computed boundaries */
+    exchange(phi, Nloc, M, req);
+
+    /* sweep through rest of phi (overlapped with communication) */
+    for (i = 1; i < (ssize_t)Nloc - 1; i++) sweep(i, M, phi, f, 0);
+
+    /* wait for communication to finish */
+    MPI_Waitall(4, req, stat);
+
+    /* repeat steps above for odd fields, don't wait */
+    sweep(0, M, phi, f, 1);
+    sweep((ssize_t)Nloc - 1, M, phi, f, 1);
+    exchange(phi, Nloc, M, req);
+    for (i = 1; i < (ssize_t)Nloc - 1; i++) sweep(i, M, phi, f, 1);
 }
 
 void exchange(std::vector<float> &phi, hsize_t Nloc, const int M) {

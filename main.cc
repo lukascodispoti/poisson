@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
 
     /* select method */
     void (*update)(std::vector<float> &, std::vector<float> &, hsize_t,
-                   const hssize_t);
+                   const hssize_t, MPI_Request *, MPI_Status *);
     if (method == 0) {
         update = &Jacobi;
         if (!rank) printf("Jacobi method\n");
@@ -149,9 +149,11 @@ int main(int argc, char **argv) {
     fprintf(fp, "iter,residual\n");
     fclose(fp);
 
+    MPI_Request req[4];
+    MPI_Status stat[4];
     /* main loop */
     while (res > tol && iter < max_iter) {
-        update(f, phi, Nloc, M);
+        update(f, phi, Nloc, M, req, stat);
         res = residual(f, phi, Nloc, M);
         iter++;
         if (!rank) printf("iter: %d, residual: %f\n", iter, res);
@@ -162,6 +164,7 @@ int main(int argc, char **argv) {
             fprintf(fp, "%d,%f\n", iter, res);
             fclose(fp);
         }
+        if (method != 0) MPI_Waitall(4, req, stat);
     }
     write1D(phi, outputfile, outputdset, Nloc, offset, M, pad);
 
