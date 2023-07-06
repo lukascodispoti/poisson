@@ -1,4 +1,4 @@
-DEBUG = 0
+DBG = 0
 
 SRCDIR = .
 BINDIR = bin
@@ -9,6 +9,10 @@ RM     = rm -rf
 CXX      = mpic++
 CFLAGS  = -Wall -Wextra -I. -mtune=generic -march=native
 LDLIBS  = -lhdf5 -lm -lstdc++
+
+ifndef $(DEBUG)
+	DEBUG = $(DBG)
+endif
 
 ifeq ($(DEBUG), 1)
 	CFLAGS += -g -O0 -fsanitize=address

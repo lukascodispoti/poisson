@@ -115,7 +115,7 @@ int main(int argc, char **argv) {
         update = &Jacobi;
         if (!rank) printf("Jacobi method\n");
     } else if (method == 1) {
-        update = &GaussSeidel;
+        update = &SOR;
         if (!rank) printf("Gauss-Seidel method\n");
     } else if (method == 2) {
         update = &SOR;
