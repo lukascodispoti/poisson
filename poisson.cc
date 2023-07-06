@@ -336,20 +336,17 @@ void Jacobi(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
 }
 
 void sweep_phi(std::vector<float> &f, std::vector<float> &phi, ssize_t i,
-               const hssize_t M) {
+               ssize_t j, ssize_t k, const hssize_t M) {
     float h = 2 * M_PI / M;
-    ssize_t ii = i + 1;
-
-    for (ssize_t j = 0; j < M; j++)
-        for (ssize_t k = 0; k < M; k++)
-            phi[loc(ii, j, k, M)] =
-                (1 - OMEGA) * phi[loc(ii, j, k, M)] +
-                OMEGA *
-                    (phi[loc(ii + 1, j, k, M)] + phi[loc(ii - 1, j, k, M)] +
-                     phi[loc(ii, j + 1, k, M)] + phi[loc(ii, j - 1, k, M)] +
-                     phi[loc(ii, j, k + 1, M)] + phi[loc(ii, j, k - 1, M)] -
-                     h * h * f[loc(i, j, k, M)]) /
-                    6.f;
+    size_t ii = i + 1;
+    phi[loc(ii, j, k, M)] =
+        (1 - OMEGA) * phi[loc(ii, j, k, M)] +
+        OMEGA *
+            (phi[loc(ii + 1, j, k, M)] + phi[loc(ii - 1, j, k, M)] +
+             phi[loc(ii, j + 1, k, M)] + phi[loc(ii, j - 1, k, M)] +
+             phi[loc(ii, j, k + 1, M)] + phi[loc(ii, j, k - 1, M)] -
+             h * h * f[loc(i, j, k, M)]) /
+            6.f;
 }
 
 void GaussSeidel(std::vector<float> &f, std::vector<float> &phi,
@@ -449,47 +446,29 @@ void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
     // MPI_Status stat[2];
     // MPI_Comm comm = MPI_COMM_WORLD;
 
-    // sweep_phi(f, phi, i, M);
-
     // /* send updated left boundary to next rank */
     // MPI_Isend(&phi[M * M], M * M, MPI_FLOAT, prev, tag, comm, &req[0]);
     // MPI_Irecv(&phi[(Nloc + 1) * M * M], M * M, MPI_FLOAT, next, tag, comm,
     //           &req[1]);
 
-    float h = 2 * M_PI / M;
-    ssize_t i, j, k, ii;
+    ssize_t i, j, k;
     /* update "black" points */
     for (i = 0; i < (ssize_t)Nloc; i++)
         for (j = 0; j < M; j++)
-            for (k = 0; k < M; k++) {
+            for (k = (i + j) % 2; k < M; k += 2) {
                 /* determine wether point is black */
                 if ((i + j + k) % 2 != 0) continue;
-                ii = i + 1;
-                phi[loc(ii, j, k, M)] =
-                    (1 - OMEGA) * phi[loc(ii, j, k, M)] +
-                    OMEGA *
-                        (phi[loc(ii + 1, j, k, M)] + phi[loc(ii - 1, j, k, M)] +
-                         phi[loc(ii, j + 1, k, M)] + phi[loc(ii, j - 1, k, M)] +
-                         phi[loc(ii, j, k + 1, M)] + phi[loc(ii, j, k - 1, M)] -
-                         h * h * f[loc(i, j, k, M)]) /
-                        6.f;
+                sweep_phi(f, phi, i, j, k, M);
             }
+            
     exchange(phi, Nloc, M);
     /* update "red" points */
     for (i = 0; i < (ssize_t)Nloc; i++)
         for (j = 0; j < M; j++)
-            for (k = 0; k < M; k++) {
+            for (k = !((i + j) % 2); k < M; k += 2) {
                 /* determine wether point is black */
                 if ((i + j + k) % 2 == 0) continue;
-                ii = i + 1;
-                phi[loc(ii, j, k, M)] =
-                    (1 - OMEGA) * phi[loc(ii, j, k, M)] +
-                    OMEGA *
-                        (phi[loc(ii + 1, j, k, M)] + phi[loc(ii - 1, j, k, M)] +
-                         phi[loc(ii, j + 1, k, M)] + phi[loc(ii, j - 1, k, M)] +
-                         phi[loc(ii, j, k + 1, M)] + phi[loc(ii, j, k - 1, M)] -
-                         h * h * f[loc(i, j, k, M)]) /
-                        6.f;
+                sweep_phi(f, phi, i, j, k, M);
             }
     exchange(phi, Nloc, M);
 }
