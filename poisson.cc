@@ -248,47 +248,35 @@ void Jacobi(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
     exchange(phi, Nloc, M);
 }
 
+static void sweep(ssize_t i, const hssize_t M, std::vector<float> &phi,
+                  std::vector<float> &f, int mode) {
+    float h = 2 * M_PI / M;
+    ssize_t j, k, ii;
+    ii = i + 1;
+    for (j = 0; j < M; j++)
+        for (k = (i + j + mode) % 2; k < M; k += 2)
+            if ((i + j + k) % 2 == mode)
+                phi[loc(ii, j, k, M)] =
+                    (1 - OMEGA) * phi[loc(ii, j, k, M)] +
+                    OMEGA *
+                        (phi[loc(ii + 1, j, k, M)] + phi[loc(ii - 1, j, k, M)] +
+                         phi[loc(ii, j + 1, k, M)] + phi[loc(ii, j - 1, k, M)] +
+                         phi[loc(ii, j, k + 1, M)] + phi[loc(ii, j, k - 1, M)] -
+                         h * h * f[loc(i, j, k, M)]) /
+                        6.f;
+}
+
 void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
          const hssize_t M) {
-    float h = 2 * M_PI / M;
-    ssize_t i, j, k, ii;
-    /* sweep through data twice in order to follow checkerboard pattern */
-    for (i = 0; i < (ssize_t)Nloc; i++) {
-        ii = i + 1;
-        for (j = 0; j < M; j++)
-            for (k = (i + j) % 2; k < M; k += 2)
-                if ((i + j + k) % 2 == 0)
-                    phi[loc(ii, j, k, M)] =
-                        (1 - OMEGA) * phi[loc(ii, j, k, M)] +
-                        OMEGA *
-                            (phi[loc(ii + 1, j, k, M)] +
-                             phi[loc(ii - 1, j, k, M)] +
-                             phi[loc(ii, j + 1, k, M)] +
-                             phi[loc(ii, j - 1, k, M)] +
-                             phi[loc(ii, j, k + 1, M)] +
-                             phi[loc(ii, j, k - 1, M)] -
-                             h * h * f[loc(i, j, k, M)]) /
-                            6.f;
-    }
+    ssize_t i;
+    for (i = 0; i < (ssize_t)Nloc; i++) 
+        sweep(i, M, phi, f, 0);
     exchange(phi, Nloc, M);
 
-    for (i = 0; i < (ssize_t)Nloc; i++) {
-        ii = i + 1;
-        for (j = 0; j < M; j++)
-            for (k = (i + j + 1) % 2; k < M; k+=2)
-                if ((i + j + k) % 2 != 0)
-                    phi[loc(ii, j, k, M)] =
-                        (1 - OMEGA) * phi[loc(ii, j, k, M)] +
-                        OMEGA *
-                            (phi[loc(ii + 1, j, k, M)] +
-                             phi[loc(ii - 1, j, k, M)] +
-                             phi[loc(ii, j + 1, k, M)] +
-                             phi[loc(ii, j - 1, k, M)] +
-                             phi[loc(ii, j, k + 1, M)] +
-                             phi[loc(ii, j, k - 1, M)] -
-                             h * h * f[loc(i, j, k, M)]) /
-                            6.f;
-    }
+    for (i = 0; i < (ssize_t)Nloc; i++) 
+        sweep(i, M, phi, f, 1);
+    exchange(phi, Nloc, M);
+}
     exchange(phi, Nloc, M);
 }
 
