@@ -202,53 +202,7 @@ hsize_t get_gridsize(char *file, char *dset) {
     return dims[0];
 }
 
-float residual(std::vector<float> &f, std::vector<float> &phi,
-               std::vector<float> &left, std::vector<float> &right,
-               hsize_t Nloc, const hssize_t M) {
-    /* Calculate the residual: res = norm(\nabla^2 phi - f) */
-    float h = 2 * M_PI / M;
-    float res = 0.f;
-    float nabla2f = 0.f;
-    ssize_t i, j, k;
-    for (i = 1; i < (long long)Nloc - 1; i++)
-        for (j = 0; j < M; j++)
-            for (k = 0; k < M; k++) {
-                nabla2f = phi[loc(i + 1, j, k, M)] + phi[loc(i - 1, j, k, M)] +
-                          phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
-                          phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
-                          6 * phi[loc(i, j, k, M)];
-                nabla2f /= h * h;
-                res += (nabla2f - f[loc(i, j, k, M)]) *
-                       (nabla2f - f[loc(i, j, k, M)]);
-            }
-    /* left boundary */
-    i = 0;
-    for (j = 0; j < M; j++)
-        for (k = 0; k < M; k++) {
-            nabla2f = phi[loc(i + 1, j, k, M)] + left[loc(0, j, k, M)] +
-                      phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
-                      phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
-                      6 * phi[loc(i, j, k, M)];
-            nabla2f /= h * h;
-            res +=
-                (nabla2f - f[loc(i, j, k, M)]) * (nabla2f - f[loc(i, j, k, M)]);
-        }
-    /* right boundary */
-    i = Nloc - 1;
-    for (j = 0; j < M; j++)
-        for (k = 0; k < M; k++) {
-            nabla2f = right[loc(0, j, k, M)] + phi[loc(i - 1, j, k, M)] +
-                      phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
-                      phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
-                      6 * phi[loc(i, j, k, M)];
-            nabla2f /= h * h;
-            res +=
-                (nabla2f - f[loc(i, j, k, M)]) * (nabla2f - f[loc(i, j, k, M)]);
-        }
 
-    MPI_Allreduce(MPI_IN_PLACE, &res, 1, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
-    return sqrt(res / M / M / M);
-}
 float residual(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
                const hssize_t M) {
     /* Calculate the residual: res = norm(\nabla^2 phi - f) */
@@ -274,47 +228,6 @@ float residual(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
     return sqrt(res / M / M / M);
 }
 
-void Jacobi(std::vector<float> &f, std::vector<float> &phi,
-            std::vector<float> &left, std::vector<float> &right, hsize_t Nloc,
-            const hssize_t M) {
-    std::vector<float> phinew(Nloc * M * M, 0);
-    float h = 2 * M_PI / M;
-    ssize_t i, j, k;
-    for (i = 1; i < (long long)Nloc - 1; i++)
-        for (j = 0; j < M; j++)
-            for (k = 0; k < M; k++) {
-                phinew[loc(i, j, k, M)] =
-                    (phi[loc(i + 1, j, k, M)] + phi[loc(i - 1, j, k, M)] +
-                     phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
-                     phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
-                     h * h * f[loc(i, j, k, M)]) /
-                    6.f;
-            }
-    /* left boundary */
-    i = 0;
-    for (j = 0; j < M; j++)
-        for (k = 0; k < M; k++) {
-            phinew[loc(i, j, k, M)] =
-                (phi[loc(i + 1, j, k, M)] + left[loc(0, j, k, M)] +
-                 phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
-                 phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
-                 h * h * f[loc(i, j, k, M)]) /
-                6.f;
-        }
-    /* right boundary */
-    i = Nloc - 1;
-    for (j = 0; j < M; j++)
-        for (k = 0; k < M; k++) {
-            phinew[loc(i, j, k, M)] =
-                (right[loc(0, j, k, M)] + phi[loc(i - 1, j, k, M)] +
-                 phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
-                 phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
-                 h * h * f[loc(i, j, k, M)]) /
-                6.f;
-        }
-
-    std::swap(phi, phinew);
-}
 void Jacobi(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
             const hssize_t M) {
     std::vector<float> phinew((Nloc + 2) * M * M, 0);
@@ -335,53 +248,6 @@ void Jacobi(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
     std::swap(phi, phinew);
 }
 
-
-
-void SOR(std::vector<float> &f, std::vector<float> &phi,
-         std::vector<float> &left, std::vector<float> &right, hsize_t Nloc,
-         const hssize_t M) {
-    /* use successive overrelaxation to update phi */
-    float h = 2 * M_PI / M;
-    ssize_t i, j, k;
-    for (i = 1; i < (long long)Nloc - 1; i++)
-        for (j = 0; j < M; j++)
-            for (k = 0; k < M; k++) {
-                phi[loc(i, j, k, M)] =
-                    (1 - OMEGA) * phi[loc(i, j, k, M)] +
-                    OMEGA *
-                        (phi[loc(i + 1, j, k, M)] + phi[loc(i - 1, j, k, M)] +
-                         phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
-                         phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
-                         h * h * f[loc(i, j, k, M)]) /
-                        6.f;
-            }
-    /* left boundary */
-    i = 0;
-    for (j = 0; j < M; j++)
-        for (k = 0; k < M; k++) {
-            phi[loc(i, j, k, M)] =
-                (1 - OMEGA) * phi[loc(i, j, k, M)] +
-                OMEGA *
-                    (phi[loc(i + 1, j, k, M)] + left[loc(0, j, k, M)] +
-                     phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
-                     phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
-                     h * h * f[loc(i, j, k, M)]) /
-                    6.f;
-        }
-    /* right boundary */
-    i = Nloc - 1;
-    for (j = 0; j < M; j++)
-        for (k = 0; k < M; k++) {
-            phi[loc(i, j, k, M)] =
-                (1 - OMEGA) * phi[loc(i, j, k, M)] +
-                OMEGA *
-                    (right[loc(0, j, k, M)] + phi[loc(i - 1, j, k, M)] +
-                     phi[loc(i, j + 1, k, M)] + phi[loc(i, j - 1, k, M)] +
-                     phi[loc(i, j, k + 1, M)] + phi[loc(i, j, k - 1, M)] -
-                     h * h * f[loc(i, j, k, M)]) /
-                    6.f;
-        }
-}
 void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
          const hssize_t M) {
     float h = 2 * M_PI / M;
@@ -421,26 +287,6 @@ void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
                              h * h * f[loc(i, j, k, M)]) /
                             6.f;
     }
-}
-
-void exchange(std::vector<float> &phi, std::vector<float> &left,
-              std::vector<float> &right, hsize_t Nloc, const int M) {
-    int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    int tag = 0;
-    int prev = (rank == 0) ? size - 1 : rank - 1;
-    int next = (rank == size - 1) ? 0 : rank + 1;
-    MPI_Request req[4];
-    MPI_Status stat[4];
-    MPI_Comm comm = MPI_COMM_WORLD;
-
-    MPI_Isend(&phi[(Nloc - 1) * M * M], M * M, MPI_FLOAT, next, tag, comm,
-              &req[0]);
-    MPI_Isend(&phi[0], M * M, MPI_FLOAT, prev, tag, comm, &req[1]);
-    MPI_Irecv(left.data(), M * M, MPI_FLOAT, prev, tag, comm, &req[2]);
-    MPI_Irecv(right.data(), M * M, MPI_FLOAT, next, tag, comm, &req[3]);
-    MPI_Waitall(4, req, stat);
 }
 
 void exchange(std::vector<float> &phi, hsize_t Nloc, const int M) {

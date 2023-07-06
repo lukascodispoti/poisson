@@ -83,14 +83,9 @@ hsize_t get_gridsize(char *file, char *dset);
  *
  * @param f
  * @param phi
- * @param left
- * @param right
  * @param Nloc
  * @return float
  */
-float residual(std::vector<float> &f, std::vector<float> &phi,
-               std::vector<float> &left, std::vector<float> &right,
-               hsize_t Nloc, const hssize_t M);
 float residual(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
                const hssize_t M);
 
@@ -106,13 +101,8 @@ float residual(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
  * @param f
  * @param phi
  * @param phinew
- * @param left
- * @param right
  * @param Nloc
  */
-void Jacobi(std::vector<float> &f, std::vector<float> &phi,
-            std::vector<float> &left, std::vector<float> &right, hsize_t Nloc,
-            const hssize_t M);
 void Jacobi(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
             const hssize_t M);
 
@@ -121,14 +111,9 @@ void Jacobi(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
  *
  * @param f
  * @param phi
- * @param left
- * @param right
  * @param Nloc
  * @param M
  */
-void GaussSeidel(std::vector<float> &f, std::vector<float> &phi,
-                 std::vector<float> &left, std::vector<float> &right,
-                 hsize_t Nloc, const hssize_t M);
 void GaussSeidel(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
                  const hssize_t M);
 
@@ -137,27 +122,11 @@ void GaussSeidel(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
  *
  * @param f
  * @param phi
- * @param left
- * @param right
  * @param Nloc
  * @param M
  */
-void SOR(std::vector<float> &f, std::vector<float> &phi,
-         std::vector<float> &left, std::vector<float> &right, hsize_t Nloc,
-         const hssize_t M);
 void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
          const hssize_t M);
-
-/**
- * @brief Exchange the boundaries between the mpi ranks.
- *
- * @param phi
- * @param left
- * @param right
- * @param Nloc
- */
-void exchange(std::vector<float> &phi, std::vector<float> &left,
-              std::vector<float> &right, hsize_t Nloc, const int);
 
 /**
  * @brief Exchange the ghost cells between the mpi ranks.
