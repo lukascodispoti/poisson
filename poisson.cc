@@ -276,6 +276,15 @@ void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
     exchange(phi, Nloc, M);
 }
 
+/**
+ * @brief Call this function from the update function to overlap communication
+ * and computation.
+ *
+ * @param phi
+ * @param Nloc
+ * @param M
+ * @param req
+ */
 static void exchange(std::vector<float> &phi, hsize_t Nloc, const int M,
                      MPI_Request *req) {
     int rank, size;

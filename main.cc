@@ -1,18 +1,12 @@
 /**
- * @file poisson.cc
- * @author lukascodispoti
- * @brief Solve the poisson equation in a 3D periodic domain using a central
- * finite difference scheme.
- * The program is parallelized using MPI. The domain is decomposed into slices
- * along the x axis. The boundaries are exchanged after each iteration.
- * File i/o is done using parallel HDF5.
- * @version 0.1
- * @date 2023-05-22
+ * @file main.cc
+ * @author lukascodispoti (lukas.codispoti@gmail.com)
+ * @brief Solve the Poisson equation using Jacobi, Gauss-Seidel or SOR method on
+ * a cubid domain with periodic boundary conditions.
  *
  * @copyright Copyright (c) 2023
  *
  */
-
 #include <hdf5.h>
 #include <mpi.h>
 
