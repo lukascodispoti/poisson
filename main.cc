@@ -28,14 +28,12 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     /* command line arguments */
-    char inputfile[100], inputdset[100];
+    char inputfile[100] = "", inputdset[100] = "";
     char outputfile[100] = "phi.h5", outputdset[100] = "phi";
     bool restart = false;
     char restartfile[100], restartdset[100] = "phi";
     int method = 2;
     float omega = 1.8;
-    strcpy(inputfile, argv[1]);
-    strcpy(inputdset, argv[2]);
     for (int i = 3; i < argc; i++) {
         if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h") || argc < 2) {
             if (!rank) {
@@ -79,6 +77,8 @@ int main(int argc, char **argv) {
         if (!strcmp(argv[i], "-w") || !strcmp(argv[i], "--omega"))
             omega = atof(argv[i + 1]);
     }
+    strcpy(inputfile, argv[1]);
+    strcpy(inputdset, argv[2]);
 
     if (!rank) {
         printf("inputfile: %s\n", inputfile);
@@ -122,6 +122,11 @@ int main(int argc, char **argv) {
     /* read input */
     std::vector<float> f(Nloc * M * M);
     read1D(f, inputfile, inputdset, Nloc, offset, M);
+    float norm_f = 0.f;
+    for (size_t i = 0; i < Nloc * M * M; i++) norm_f += f[i] * f[i];
+    MPI_Allreduce(MPI_IN_PLACE, &norm_f, 1, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+    norm_f = sqrt(norm_f);
+    if (!rank) printf("norm_f = %f\n", norm_f);
 
     std::vector<float> phi((Nloc + 2) * M * M, 0);
     if (restart) read1D(phi, restartfile, restartdset, Nloc, offset, M);
@@ -130,11 +135,13 @@ int main(int argc, char **argv) {
     int pad = M * M;
     phi.insert(phi.begin(), pad, 0);
 
+    if (restart) exchange(phi, Nloc, M);
+
     const float tol = 1e-5;
     const int max_iter = 10000;
     const int dump_interval = 100;
     int iter = 0;
-    float res = 1e10;
+    float res = 1e10, res_rel = 1e10;
 
     /* create the residual file */
     FILE *fp;
@@ -149,8 +156,11 @@ int main(int argc, char **argv) {
     while (res > tol && iter < max_iter) {
         update(f, phi, Nloc, M, req, stat);
         res = residual(f, phi, Nloc, M);
+        res_rel = res / norm_f;
         iter++;
-        if (!rank) printf("iter: %d, residual: %f\n", iter, res);
+        if (!rank)
+            printf("iter: %06d, residual: %f, relative: %f\n", iter, res,
+                   res_rel);
         if (iter % dump_interval == 0)
             write1D(phi, outputfile, outputdset, Nloc, offset, M, pad);
         if (!rank) {
