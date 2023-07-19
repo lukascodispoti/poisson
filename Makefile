@@ -1,4 +1,4 @@
-DBG = 0
+DEBUG = 0
 
 SRCDIR = .
 BINDIR = bin
@@ -7,17 +7,15 @@ MKDIR  = mkdir -p
 RM     = rm -rf
 
 CXX      = mpic++
-CFLAGS  = -Wall -Wextra -I. -mtune=generic -march=native
 LDLIBS  = -lhdf5 -lm -lstdc++
 
-ifndef $(DEBUG)
-	DEBUG = $(DBG)
-endif
-
+ifndef $CFLAGS
+CFLAGS  = -Wall -Wextra -I. -mtune=generic -march=native
 ifeq ($(DEBUG), 1)
 	CFLAGS += -g -O0 -fsanitize=address
 else
 	CFLAGS += -O3
+endif
 endif
 
 TARGET = main
