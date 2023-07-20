@@ -1,25 +1,25 @@
 import sys
 from matplotlib import pyplot as plt
 from matplotlib import style
-import pandas as pd
+import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 style.use('fast')
 
-dfs = []
+arrs = []
 labels = []
 files = sys.argv[1:]
 for f in files:
-    df = pd.read_csv(f)
-    print(df.head())
-    dfs.append(df)
+    res = np.loadtxt(f, skiprows=0)
+    print(res.shape)
+    arrs.append(res)
     labels.append(f)
 
 fix, ax = plt.subplots(1, 1)
-for df, f in zip(dfs, labels):
-    ax.plot(df['iter'], df['residual'], label=f, rasterized=True)
+for arr, f in zip(arrs, labels):
+    ax.plot(arr, label=f, rasterized=True)
 ax.legend()
 ax.set_xlabel('iteration')
 ax.set_ylabel('residual')
 ax.set_yscale('log')
-plt.savefig('convergence-plot.png')
+plt.savefig('convergence-plot.pdf')

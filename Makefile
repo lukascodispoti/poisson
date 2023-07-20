@@ -1,5 +1,3 @@
-DEBUG = 0
-
 SRCDIR = .
 BINDIR = bin
 OBJDIR = obj
@@ -10,12 +8,9 @@ CXX      = mpic++
 LDLIBS  = -lhdf5 -lm -lstdc++
 
 ifndef $CFLAGS
-CFLAGS  = -Wall -Wextra -I. -mtune=generic -march=native
-ifeq ($(DEBUG), 1)
-	CFLAGS += -g -O0 -fsanitize=address
-else
-	CFLAGS += -O3
-endif
+	CFLAGS  = -Wall -Wextra -I. -mtune=generic -march=native -g
+#	CFLAGS += -O0 -fsanitize=address
+    CFLAGS += -O3
 endif
 
 TARGET = main

@@ -224,7 +224,7 @@ float residual(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
             }
     }
     MPI_Allreduce(MPI_IN_PLACE, &res, 1, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
-    return sqrt(res / M / M / M);
+    return sqrt(res);
 }
 
 void Jacobi(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,

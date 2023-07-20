@@ -27,6 +27,12 @@ int main(int argc, char **argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+    if (!rank) {
+        printf("\n   P O I S S O N\n\n");
+        printf("Solving Poisson equation on %d processes\n", size);
+    }
+
+    // TODO: implement "welcome()" function?
     /* command line arguments */
     char inputfile[100] = "", inputdset[100] = "";
     char outputfile[100] = "phi.h5", outputdset[100] = "phi";
@@ -34,6 +40,7 @@ int main(int argc, char **argv) {
     char restartfile[100], restartdset[100] = "phi";
     int method = 2;
     float omega = 1.8;
+    int dump_interval = 100;
     for (int i = 3; i < argc; i++) {
         if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h") || argc < 2) {
             if (!rank) {
@@ -55,6 +62,7 @@ int main(int argc, char **argv) {
                     "  -t, --outputdset <dset>\tOutput to "
                     "outputdset\n");
                 printf("  -w, --omega <omega>\t\tSOR parameter\n");
+                printf("  -i, --interval <interval>\tDump interval\n");
             }
             MPI_Finalize();
             return 0;
@@ -76,20 +84,21 @@ int main(int argc, char **argv) {
             method = atoi(argv[i + 1]);
         if (!strcmp(argv[i], "-w") || !strcmp(argv[i], "--omega"))
             omega = atof(argv[i + 1]);
+        if (!strcmp(argv[i], "-i") || !strcmp(argv[i], "--interval"))
+            dump_interval = atoi(argv[i + 1]);
     }
     strcpy(inputfile, argv[1]);
     strcpy(inputdset, argv[2]);
 
     if (!rank) {
-        printf("inputfile: %s\n", inputfile);
-        printf("inputdset: %s\n", inputdset);
-        printf("method: %d\n", method);
+        printf("Inputfile: %s\n", inputfile);
+        printf("Inputdset: %s\n", inputdset);
         if (restart) {
-            printf("restartfile: %s\n", restartfile);
-            printf("restartdset: %s\n", restartdset);
+            printf("Restartfile: %s\n", restartfile);
+            printf("Restartdset: %s\n", restartdset);
         }
-        printf("outputfile: %s\n", outputfile);
-        printf("outputdset: %s\n", outputdset);
+        printf("Outputfile: %s\n", outputfile);
+        printf("Outputdset: %s\n", outputdset);
     }
     if (method == 1) omega = 1.0;
     set_omega(omega);
@@ -137,36 +146,41 @@ int main(int argc, char **argv) {
 
     if (restart) exchange(phi, Nloc, M);
 
-    const float tol = 1e-5;
-    const int max_iter = 10000;
-    const int dump_interval = 100;
     int iter = 0;
-    float res = 1e10, res_rel = 1e10;
 
-    /* create the residual file */
+    /* residual file */
     FILE *fp;
-    char fname[100] = "residual.csv";
-    fp = fopen(fname, "w");
-    fprintf(fp, "iter,residual\n");
-    fclose(fp);
+    const char fname[100] = "residual.csv";
+    if (!rank) {
+        fp = fopen(fname, "a+");
+        fclose(fp);
+    }
+    if (restart) MPI_Bcast(&iter, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
+    /* array to collect residuals, will be written to file at dump interval */
+    std::vector<float> residuals(dump_interval);
+
+    const float tol = 1e-7;
+    const int max_iter = 1000000;
+    float res = 1e10, res_rel = 1e10;
     MPI_Request req[4];
     MPI_Status stat[4];
     /* main loop */
-    while (res > tol && iter < max_iter) {
+    while (res_rel > tol && iter < max_iter) {
         update(f, phi, Nloc, M, req, stat);
         res = residual(f, phi, Nloc, M);
         res_rel = res / norm_f;
+        residuals[iter % dump_interval] = res_rel;
         iter++;
-        if (!rank)
-            printf("iter: %06d, residual: %f, relative: %f\n", iter, res,
-                   res_rel);
-        if (iter % dump_interval == 0)
+        if (!rank) printf("%07d: res = %e, rel = %e\n", iter, res, res_rel);
+        if (iter % dump_interval == 0) {
             write1D(phi, outputfile, outputdset, Nloc, offset, M, pad);
-        if (!rank) {
-            fp = fopen(fname, "a");
-            fprintf(fp, "%d,%f\n", iter, res);
-            fclose(fp);
+            if (!rank) {
+                fp = fopen(fname, "a");
+                for (int i = 0; i < dump_interval; i++)
+                    fprintf(fp, "%e\n", residuals[i]);
+                fclose(fp);
+            }
         }
         if (method != 0) MPI_Waitall(4, req, stat);
     }
