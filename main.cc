@@ -146,22 +146,22 @@ int main(int argc, char **argv) {
 
     if (restart) exchange(phi, Nloc, M);
 
-    int iter = 0;
 
     /* residual file */
     FILE *fp;
     const char fname[100] = "residual.csv";
     if (!rank) {
-        fp = fopen(fname, "a+");
+        if (!restart && !access(fname, F_OK)) remove(fname);
+        fp = fopen(fname, "a");
         fclose(fp);
     }
-    if (restart) MPI_Bcast(&iter, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
     /* array to collect residuals, will be written to file at dump interval */
     std::vector<float> residuals(dump_interval);
 
+    uint64_t iter = 0;
+    const uint64_t max_iter = 1000000;
     const float tol = 1e-7;
-    const int max_iter = 1000000;
     float res = 1e10, res_rel = 1e10;
     MPI_Request req[4];
     MPI_Status stat[4];
@@ -172,7 +172,8 @@ int main(int argc, char **argv) {
         res_rel = res / norm_f;
         residuals[iter % dump_interval] = res_rel;
         iter++;
-        if (!rank) printf("%07d: res = %e, rel = %e\n", iter, res, res_rel);
+        if (!rank)
+            printf("%07" PRIu64 ": res = %e, rel = %e\n", iter, res, res_rel);
         if (iter % dump_interval == 0) {
             write1D(phi, outputfile, outputdset, Nloc, offset, M, pad);
             if (!rank) {

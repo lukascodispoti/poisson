@@ -227,6 +227,51 @@ float residual(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
     return sqrt(res);
 }
 
+/**
+ * @brief Call this function from the update function to overlap communication
+ * and computation.
+ *
+ * @param phi
+ * @param Nloc
+ * @param M
+ * @param req
+ */
+static void exchange(std::vector<float> &phi, hsize_t Nloc, const int M,
+                     MPI_Request *req) {
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    int tag = 0;
+    int prev = (rank == 0) ? size - 1 : rank - 1;
+    int next = (rank == size - 1) ? 0 : rank + 1;
+    MPI_Comm comm = MPI_COMM_WORLD;
+
+    MPI_Isend(&phi[Nloc * M * M], M * M, MPI_FLOAT, next, tag, comm, &req[0]);
+    MPI_Isend(&phi[M * M], M * M, MPI_FLOAT, prev, tag, comm, &req[1]);
+    MPI_Irecv(&phi[0], M * M, MPI_FLOAT, prev, tag, comm, &req[2]);
+    MPI_Irecv(&phi[(Nloc + 1) * M * M], M * M, MPI_FLOAT, next, tag, comm,
+              &req[3]);
+}
+
+void exchange(std::vector<float> &phi, hsize_t Nloc, const int M) {
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    int tag = 0;
+    int prev = (rank == 0) ? size - 1 : rank - 1;
+    int next = (rank == size - 1) ? 0 : rank + 1;
+    MPI_Request req[4];
+    MPI_Status stat[4];
+    MPI_Comm comm = MPI_COMM_WORLD;
+
+    MPI_Isend(&phi[Nloc * M * M], M * M, MPI_FLOAT, next, tag, comm, &req[0]);
+    MPI_Isend(&phi[M * M], M * M, MPI_FLOAT, prev, tag, comm, &req[1]);
+    MPI_Irecv(&phi[0], M * M, MPI_FLOAT, prev, tag, comm, &req[2]);
+    MPI_Irecv(&phi[(Nloc + 1) * M * M], M * M, MPI_FLOAT, next, tag, comm,
+              &req[3]);
+    MPI_Waitall(4, req, stat);
+}
+
 void Jacobi(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
             const hssize_t M, MPI_Request *req, MPI_Status *stat) {
     std::vector<float> phinew((Nloc + 2) * M * M, 0);
@@ -245,7 +290,8 @@ void Jacobi(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
             }
     }
     std::swap(phi, phinew);
-    exchange(phi, Nloc, M);
+    exchange(phi, Nloc, M, req);
+    MPI_Waitall(4, req, stat);
 }
 
 static void sweep(ssize_t i, const hssize_t M, std::vector<float> &phi,
@@ -276,32 +322,6 @@ void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
     exchange(phi, Nloc, M);
 }
 
-/**
- * @brief Call this function from the update function to overlap communication
- * and computation.
- *
- * @param phi
- * @param Nloc
- * @param M
- * @param req
- */
-static void exchange(std::vector<float> &phi, hsize_t Nloc, const int M,
-                     MPI_Request *req) {
-    int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    int tag = 0;
-    int prev = (rank == 0) ? size - 1 : rank - 1;
-    int next = (rank == size - 1) ? 0 : rank + 1;
-    MPI_Comm comm = MPI_COMM_WORLD;
-
-    MPI_Isend(&phi[Nloc * M * M], M * M, MPI_FLOAT, next, tag, comm, &req[0]);
-    MPI_Isend(&phi[M * M], M * M, MPI_FLOAT, prev, tag, comm, &req[1]);
-    MPI_Irecv(&phi[0], M * M, MPI_FLOAT, prev, tag, comm, &req[2]);
-    MPI_Irecv(&phi[(Nloc + 1) * M * M], M * M, MPI_FLOAT, next, tag, comm,
-              &req[3]);
-}
-
 void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
          const hssize_t M, MPI_Request *req, MPI_Status *stat) {
     ssize_t i;
@@ -323,25 +343,6 @@ void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
     sweep((ssize_t)Nloc - 1, M, phi, f, 1);
     exchange(phi, Nloc, M, req);
     for (i = 1; i < (ssize_t)Nloc - 1; i++) sweep(i, M, phi, f, 1);
-}
-
-void exchange(std::vector<float> &phi, hsize_t Nloc, const int M) {
-    int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    int tag = 0;
-    int prev = (rank == 0) ? size - 1 : rank - 1;
-    int next = (rank == size - 1) ? 0 : rank + 1;
-    MPI_Request req[4];
-    MPI_Status stat[4];
-    MPI_Comm comm = MPI_COMM_WORLD;
-
-    MPI_Isend(&phi[Nloc * M * M], M * M, MPI_FLOAT, next, tag, comm, &req[0]);
-    MPI_Isend(&phi[M * M], M * M, MPI_FLOAT, prev, tag, comm, &req[1]);
-    MPI_Irecv(&phi[0], M * M, MPI_FLOAT, prev, tag, comm, &req[2]);
-    MPI_Irecv(&phi[(Nloc + 1) * M * M], M * M, MPI_FLOAT, next, tag, comm,
-              &req[3]);
-    MPI_Waitall(4, req, stat);
 }
 
 bool endswith(std::string const &value, std::string const &ending) {

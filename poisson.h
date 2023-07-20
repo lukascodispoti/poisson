@@ -2,6 +2,7 @@
 #define POISSON_H
 
 #include <hdf5.h>
+#include <unistd.h>  // for access
 
 #include <cmath>
 #include <string>
@@ -52,7 +53,7 @@ void read3D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
  * @param pad
  */
 void write1D(std::vector<float> &f, char *fname, char *dsetname, hsize_t Nloc,
-             hsize_t offset, const hsize_t M, int pad  = 0);
+             hsize_t offset, const hsize_t M, int pad = 0);
 
 /**
  * @brief Write three components of a M * M * M field to an hdf5 file.
@@ -90,6 +91,15 @@ float residual(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
                const hssize_t M);
 
 /**
+ * @brief Exchange the ghost cells between the mpi ranks.
+ *
+ * @param phi
+ * @param Nloc
+ * @param M
+ */
+void exchange(std::vector<float> &phi, hsize_t Nloc, const int M);
+
+/**
  * @brief Update the solution of the poisson equation
  *
  *  d 2 φ
@@ -106,7 +116,6 @@ float residual(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
 void Jacobi(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
             const hssize_t M, MPI_Request *req, MPI_Status *stat);
 
-
 /**
  * @brief Use SOR to update the solution of the poisson equation.
  *
@@ -117,15 +126,6 @@ void Jacobi(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
  */
 void SOR(std::vector<float> &f, std::vector<float> &phi, hsize_t Nloc,
          const hssize_t M, MPI_Request *req, MPI_Status *stat);
-
-/**
- * @brief Exchange the ghost cells between the mpi ranks.
- *
- * @param phi
- * @param Nloc
- * @param M
- */
-void exchange(std::vector<float> &phi, hsize_t Nloc, const int M);
 
 /**
  * @brief Returns true if the string `value` ends with the string `ending`,
