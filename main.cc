@@ -174,6 +174,7 @@ int main(int argc, char **argv) {
         iter++;
         if (!rank)
             printf("%07" PRIu64 ": res = %e, rel = %e\n", iter, res, res_rel);
+        if (method != 0) MPI_Waitall(4, req, stat);
         if (iter % dump_interval == 0) {
             write1D(phi, outputfile, outputdset, Nloc, offset, M, pad);
             if (!rank) {
@@ -183,7 +184,6 @@ int main(int argc, char **argv) {
                 fclose(fp);
             }
         }
-        if (method != 0) MPI_Waitall(4, req, stat);
     }
     write1D(phi, outputfile, outputdset, Nloc, offset, M, pad);
 
